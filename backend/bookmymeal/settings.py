@@ -83,7 +83,7 @@ WSGI_APPLICATION = 'bookmymeal.wsgi.application'
 # ── Database ──────────────────────────────────────────────────────────────────
 if os.environ.get('DATABASE_URL'):
     import dj_database_url
-    DATABASES = {'default': dj_database_url.config(conn_max_age=600, ssl_require=True)}
+    DATABASES = {'default': dj_database_url.config(conn_max_age=600)}
 else:
     DATABASES = {
         'default': {
