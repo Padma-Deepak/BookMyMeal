@@ -1,4 +1,5 @@
 [phases.setup]
+nixArchive = "https://github.com/NixOS/nixpkgs/archive/nixos-24.11.tar.gz"
 nixPkgs = ["python312", "nodejs_22"]
 
 [phases.install]
