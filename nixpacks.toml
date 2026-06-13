@@ -1,5 +1,6 @@
 [phases.setup]
-nixPkgs = ["python312", "python312Packages.pip", "nodejs_20"]
+nixPkgs = ["python312", "nodejs_20"]
+cmds = ["python3.12 -m ensurepip --upgrade"]
 
 [phases.install]
 cmds = [
