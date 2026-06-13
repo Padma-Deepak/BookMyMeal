@@ -1,0 +1,5 @@
+[build]
+buildCommand = "npm --prefix frontend install && npm --prefix frontend run build && pip install -r backend/requirements.txt && python backend/manage.py collectstatic --noinput && python backend/manage.py migrate"
+
+[deploy]
+startCommand = "gunicorn bookmymeal.wsgi --chdir backend --bind 0.0.0.0:$PORT --workers 2 --timeout 120"
