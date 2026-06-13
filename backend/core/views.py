@@ -513,6 +513,44 @@ class CatererBillPDFView(APIView):
         return generate_bill_pdf(bill, mode='caterer')
 
 
+# ─── Password Management ──────────────────────────────────────────────────────
+
+class ChangePasswordView(APIView):
+    """POST /api/change-password/ — any authenticated user changes their own password."""
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request):
+        current = request.data.get('current_password', '').strip()
+        new = request.data.get('new_password', '').strip()
+        if not current or not new:
+            return Response({'detail': 'current_password and new_password are required.'}, status=400)
+        if not request.user.check_password(current):
+            return Response({'detail': 'Current password is incorrect.'}, status=400)
+        if len(new) < 6:
+            return Response({'detail': 'New password must be at least 6 characters.'}, status=400)
+        request.user.set_password(new)
+        request.user.save()
+        return Response({'detail': 'Password changed successfully.'})
+
+
+class SetUserPasswordView(APIView):
+    """POST /api/users/<uuid>/set-password/ — superuser resets any user's password."""
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request, pk):
+        if request.user.role != 'superuser':
+            return Response({'detail': 'Only superusers can reset passwords.'}, status=403)
+        new = request.data.get('new_password', '').strip()
+        if not new:
+            return Response({'detail': 'new_password is required.'}, status=400)
+        if len(new) < 6:
+            return Response({'detail': 'Password must be at least 6 characters.'}, status=400)
+        user = get_object_or_404(User, pk=pk)
+        user.set_password(new)
+        user.save()
+        return Response({'detail': f"Password for {user.username} has been reset."})
+
+
 # ─── Notifications ────────────────────────────────────────────────────────────
 
 class NotificationListView(generics.ListAPIView):

@@ -32,10 +32,16 @@ function navForRole(role: string): NavItem[] {
         { to: '/caretaker/purchases', label: 'Purchase History' },
       ];
     case 'manager':
+      return [
+        { to: '/manager/dashboard', label: 'Dashboard' },
+        { to: '/manager/billing-history', label: 'Billing History' },
+      ];
     case 'superuser':
       return [
         { to: '/manager/dashboard', label: 'Dashboard' },
         { to: '/manager/billing-history', label: 'Billing History' },
+        { to: '/superuser/accounts', label: 'Accounts' },
+        { to: '/superuser/vendors', label: 'Vendors' },
       ];
     default:
       return [];
@@ -198,6 +204,21 @@ const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
                 </span>
               </span>
 
+              <button
+                onClick={() => navigate('/change-password')}
+                style={{
+                  background: 'none',
+                  border: '1px solid #e5e7eb',
+                  borderRadius: 6,
+                  padding: '0.25rem 0.55rem',
+                  cursor: 'pointer',
+                  fontSize: '0.78rem',
+                  color: '#6b7280',
+                  whiteSpace: 'nowrap',
+                }}
+              >
+                Change PW
+              </button>
               <button
                 onClick={handleLogout}
                 style={{

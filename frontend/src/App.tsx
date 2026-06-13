@@ -33,6 +33,10 @@ import BillingHistoryPage from './pages/manager/BillingHistoryPage';
 
 // Superuser
 import VendorsPage from './pages/superuser/VendorsPage';
+import AccountsPage from './pages/superuser/AccountsPage';
+
+// Shared
+import ChangePasswordPage from './pages/ChangePasswordPage';
 
 const RoleRedirect = () => {
   const { user } = useAuth();
@@ -154,6 +158,18 @@ function App() {
             <Route path="/superuser/vendors" element={
               <ProtectedRoute allowedRoles={['superuser']}>
                 <VendorsPage />
+              </ProtectedRoute>
+            } />
+            <Route path="/superuser/accounts" element={
+              <ProtectedRoute allowedRoles={['superuser']}>
+                <AccountsPage />
+              </ProtectedRoute>
+            } />
+
+            {/* ── Shared ── */}
+            <Route path="/change-password" element={
+              <ProtectedRoute allowedRoles={['guest', 'caterer', 'caretaker', 'manager', 'superuser']}>
+                <ChangePasswordPage />
               </ProtectedRoute>
             } />
 
