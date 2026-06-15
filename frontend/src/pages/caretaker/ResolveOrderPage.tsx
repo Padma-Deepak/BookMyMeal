@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import Layout from '../../components/Layout';
 import { apiGet, apiPatch, apiPost } from '../../lib/api';
-import type { Order, MenuItem } from '../../types';
+import type { Order } from '../../types';
 import { SPICY_LEVELS } from '../../types';
 
 const VENDOR_STORAGE_KEY = 'bmm_vendor_names';

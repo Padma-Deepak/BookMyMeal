@@ -20,6 +20,11 @@ export default tseslint.config(
     rules: {
       ...reactHooks.configs.recommended.rules,
       'react-refresh/only-export-components': ['warn', { allowConstantExport: true }],
+      // react-hooks v7 introduced strict new rules that are too aggressive for this codebase's
+      // data-fetching patterns (setState in init effects, Date.now in render, inner components).
+      'react-hooks/set-state-in-effect': 'off',
+      'react-hooks/purity': 'off',
+      'react-hooks/static-components': 'off',
     },
   },
 )
