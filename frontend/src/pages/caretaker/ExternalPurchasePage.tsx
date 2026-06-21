@@ -108,7 +108,7 @@ const ExternalPurchasePage: React.FC = () => {
                 setSuccess(false);
                 setForm(f => ({ ...f, vendor_name: '', item_name: '', quantity: '1', cost: '' }));
               }}
-              style={{ padding: '0.6rem 1.25rem', background: '#f16524', color: '#fff', border: 'none', borderRadius: 8, cursor: 'pointer', fontWeight: 600, minHeight: 44 }}
+              style={{ padding: '0.6rem 1.25rem', background: '#1a3c2c', color: '#fff', border: 'none', borderRadius: 8, cursor: 'pointer', fontWeight: 600, minHeight: 44 }}
             >
               Log Another
             </button>
@@ -133,7 +133,7 @@ const ExternalPurchasePage: React.FC = () => {
         </div>
         <button
           onClick={() => navigate('/caretaker/orders')}
-          style={{ background: 'none', border: 'none', color: '#f16524', cursor: 'pointer', fontSize: '0.875rem', padding: '0.25rem' }}
+          style={{ background: 'none', border: 'none', color: '#1a3c2c', cursor: 'pointer', fontSize: '0.875rem', padding: '0.25rem' }}
         >
           ← Back
         </button>
@@ -205,7 +205,7 @@ const ExternalPurchasePage: React.FC = () => {
           <div>
             <label style={{ ...labelStyle, marginBottom: '0.5rem' }}>Who paid?</label>
             <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
-              <label style={{ display: 'flex', alignItems: 'flex-start', gap: '0.6rem', cursor: 'pointer', padding: '0.75rem', borderRadius: 8, border: `1px solid ${!form.is_paid_by_caretaker ? '#f16524' : '#e5e7eb'}`, background: !form.is_paid_by_caretaker ? '#fff7f4' : '#fff' }}>
+              <label style={{ display: 'flex', alignItems: 'flex-start', gap: '0.6rem', cursor: 'pointer', padding: '0.75rem', borderRadius: 8, border: `1px solid ${!form.is_paid_by_caretaker ? '#1a3c2c' : '#e5e7eb'}`, background: !form.is_paid_by_caretaker ? '#e6efe9' : '#fff' }}>
                 <input
                   type="radio"
                   name="paid_status"
@@ -218,7 +218,7 @@ const ExternalPurchasePage: React.FC = () => {
                   <div style={{ fontSize: '0.78rem', color: '#6b7280', marginTop: 1 }}>Cost added to guest bill automatically</div>
                 </div>
               </label>
-              <label style={{ display: 'flex', alignItems: 'flex-start', gap: '0.6rem', cursor: 'pointer', padding: '0.75rem', borderRadius: 8, border: `1px solid ${form.is_paid_by_caretaker ? '#f16524' : '#e5e7eb'}`, background: form.is_paid_by_caretaker ? '#fff7f4' : '#fff' }}>
+              <label style={{ display: 'flex', alignItems: 'flex-start', gap: '0.6rem', cursor: 'pointer', padding: '0.75rem', borderRadius: 8, border: `1px solid ${form.is_paid_by_caretaker ? '#1a3c2c' : '#e5e7eb'}`, background: form.is_paid_by_caretaker ? '#e6efe9' : '#fff' }}>
                 <input
                   type="radio"
                   name="paid_status"
@@ -245,7 +245,7 @@ const ExternalPurchasePage: React.FC = () => {
             disabled={saving}
             style={{
               padding: '0.65rem',
-              background: saving ? '#fdba8c' : '#f16524',
+              background: saving ? '#7aab8e' : '#1a3c2c',
               color: '#fff',
               border: 'none',
               borderRadius: 8,

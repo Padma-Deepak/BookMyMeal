@@ -147,7 +147,7 @@ const PayoutHistoryPage: React.FC = () => {
                           </thead>
                           <tbody>
                             {payout.items.map((item, idx) => (
-                              <tr key={idx} style={{ borderTop: '1px solid #f9fafb' }}>
+                              <tr key={idx} style={{ borderTop: '1px solid #f0ece3' }}>
                                 <td style={{ padding: '0.45rem 0', color: '#374151' }}>{item.item_name}</td>
                                 <td style={{ padding: '0.45rem 0', textAlign: 'center', color: '#6b7280' }}>×{item.quantity}</td>
                                 <td style={{ padding: '0.45rem 0', textAlign: 'right', color: '#6b7280' }}>₹{item.caterer_price.toFixed(2)}</td>

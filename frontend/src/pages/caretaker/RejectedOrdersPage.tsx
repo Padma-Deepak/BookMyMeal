@@ -78,7 +78,7 @@ const RejectedOrdersPage: React.FC = () => {
                 <div style={{ display: 'flex', gap: '0.6rem', marginTop: '0.875rem', flexWrap: 'wrap' }}>
                   <button
                     onClick={() => navigate(`/caretaker/orders/${order.id}/resolve`)}
-                    style={{ background: '#f16524', color: '#fff', border: 'none', borderRadius: 7, padding: '0.45rem 1rem', cursor: 'pointer', fontWeight: 600, fontSize: '0.875rem', minHeight: 38 }}
+                    style={{ background: '#1a3c2c', color: '#fff', border: 'none', borderRadius: 7, padding: '0.45rem 1rem', cursor: 'pointer', fontWeight: 600, fontSize: '0.875rem', minHeight: 38 }}
                   >
                     Resolve Order
                   </button>
@@ -109,7 +109,7 @@ const RejectedOrdersPage: React.FC = () => {
                 <div style={{ display: 'flex', gap: '0.6rem', marginTop: '0.875rem', flexWrap: 'wrap' }}>
                   <button
                     onClick={() => navigate(`/caretaker/orders/${order.id}/resolve`)}
-                    style={{ background: '#f16524', color: '#fff', border: 'none', borderRadius: 7, padding: '0.45rem 1rem', cursor: 'pointer', fontWeight: 600, fontSize: '0.875rem', minHeight: 38 }}
+                    style={{ background: '#1a3c2c', color: '#fff', border: 'none', borderRadius: 7, padding: '0.45rem 1rem', cursor: 'pointer', fontWeight: 600, fontSize: '0.875rem', minHeight: 38 }}
                   >
                     Source Missing Items
                   </button>
@@ -141,7 +141,7 @@ const RejectedOrdersPage: React.FC = () => {
                 <div style={{ display: 'flex', gap: '0.6rem', marginTop: '0.875rem', flexWrap: 'wrap' }}>
                   <button
                     onClick={() => navigate(`/caretaker/orders/${order.id}/resolve`)}
-                    style={{ background: '#f16524', color: '#fff', border: 'none', borderRadius: 7, padding: '0.45rem 1rem', cursor: 'pointer', fontWeight: 600, fontSize: '0.875rem', minHeight: 38 }}
+                    style={{ background: '#1a3c2c', color: '#fff', border: 'none', borderRadius: 7, padding: '0.45rem 1rem', cursor: 'pointer', fontWeight: 600, fontSize: '0.875rem', minHeight: 38 }}
                   >
                     Resolve Order
                   </button>
@@ -205,7 +205,7 @@ const OrderCard: React.FC<OrderCardProps> = ({ order, variant, children }) => {
           {(order.items_detail || order.items).map((item, idx) => {
             const d = item as { name?: string; quantity: number; spicy_level?: string };
             return (
-              <tr key={idx} style={{ borderTop: idx > 0 ? '1px solid #f9fafb' : undefined }}>
+              <tr key={idx} style={{ borderTop: idx > 0 ? '1px solid #f0ece3' : undefined }}>
                 <td style={{ padding: '0.3rem 0', color: '#374151' }}>{d.name || (item as { menu_item_id: string }).menu_item_id}</td>
                 <td style={{ padding: '0.3rem', textAlign: 'center', color: '#6b7280' }}>×{d.quantity}</td>
                 <td style={{ padding: '0.3rem', color: '#9ca3af', fontSize: '0.8rem' }}>{d.spicy_level}</td>

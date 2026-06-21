@@ -1,10 +1,8 @@
-import React, { useEffect, useState } from 'react';
+import React from 'react';
 import { NavLink, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
-import { apiGet } from '../lib/api';
-import type { Notification } from '../types';
 
-const BRAND = '#f16524';
+const BRAND = '#1a3c2c';
 
 interface NavItem {
   to: string;
@@ -59,14 +57,6 @@ const ROLE_LABEL: Record<string, string> = {
 const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const { user, logout } = useAuth();
   const navigate = useNavigate();
-  const [unreadCount, setUnreadCount] = useState(0);
-
-  useEffect(() => {
-    if (!user) return;
-    apiGet<Notification[]>('/notifications/')
-      .then(ns => setUnreadCount(ns.filter(n => !n.is_read).length))
-      .catch(() => {});
-  }, [user]);
 
   const navItems = user ? navForRole(user.role) : [];
 
@@ -76,7 +66,7 @@ const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   };
 
   return (
-    <div style={{ minHeight: '100vh', background: '#f9fafb' }}>
+    <div style={{ minHeight: '100vh', background: '#f0ece3' }}>
       <nav style={{
         background: '#fff',
         borderBottom: '1px solid #e5e7eb',
@@ -102,11 +92,11 @@ const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
               border: 'none',
               padding: 0,
               cursor: 'pointer',
-              marginRight: '1.25rem',
+              marginRight: '1.5rem',
               flexShrink: 0,
               display: 'flex',
               alignItems: 'center',
-              gap: 6,
+              gap: 8,
             }}
           >
             <div style={{ width: 28, height: 28, background: BRAND, borderRadius: 7, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
@@ -114,13 +104,19 @@ const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
                 <path d="M11 9H9V2H7v7H5V2H3v7c0 2.12 1.66 3.84 3.75 3.97V22h2.5v-9.03C11.34 12.84 13 11.12 13 9V2h-2v7zm5-3v8h2.5v8H21V2c-2.76 0-5 2.24-5 4z"/>
               </svg>
             </div>
-            <span style={{ fontWeight: 700, fontSize: '1rem', color: BRAND, letterSpacing: '-0.01em' }}>
+            <span style={{
+              fontFamily: "'Playfair Display', Georgia, serif",
+              fontWeight: 900,
+              fontSize: '1.1rem',
+              color: BRAND,
+              letterSpacing: '-0.02em',
+            }}>
               BookMyMeal
             </span>
           </button>
 
           {/* Nav links */}
-          <div style={{ display: 'flex', gap: 2, flex: 1, overflowX: 'auto' }}>
+          <div style={{ display: 'flex', gap: '0.25rem', flex: 1, overflowX: 'auto' }}>
             {navItems.map(item => (
               <NavLink
                 key={item.to}
@@ -128,15 +124,15 @@ const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
                 style={({ isActive }) => ({
                   display: 'inline-flex',
                   alignItems: 'center',
-                  color: isActive ? BRAND : '#4b5563',
+                  color: isActive ? BRAND : '#6b7280',
                   fontWeight: isActive ? 600 : 400,
                   textDecoration: 'none',
-                  padding: '0.3rem 0.65rem',
-                  borderRadius: 6,
+                  padding: '0.3rem 0.75rem',
                   fontSize: '0.875rem',
-                  background: isActive ? '#fff7f4' : 'transparent',
+                  background: 'transparent',
                   whiteSpace: 'nowrap',
                   borderBottom: isActive ? `2px solid ${BRAND}` : '2px solid transparent',
+                  transition: 'color 0.15s',
                 })}
               >
                 {item.label}
@@ -147,47 +143,6 @@ const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
           {/* Right side */}
           {user && (
             <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexShrink: 0 }}>
-              {/* Notification bell */}
-              <button
-                onClick={() => {}}
-                title="Notifications"
-                style={{
-                  position: 'relative',
-                  background: 'none',
-                  border: 'none',
-                  padding: '0.3rem',
-                  display: 'flex',
-                  alignItems: 'center',
-                  borderRadius: 6,
-                  color: '#6b7280',
-                  cursor: 'pointer',
-                }}
-              >
-                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                  <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9" />
-                  <path d="M13.73 21a2 2 0 0 1-3.46 0" />
-                </svg>
-                {unreadCount > 0 && (
-                  <span style={{
-                    position: 'absolute',
-                    top: 1,
-                    right: 1,
-                    background: BRAND,
-                    color: '#fff',
-                    borderRadius: '50%',
-                    width: 15,
-                    height: 15,
-                    fontSize: '0.6rem',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    fontWeight: 700,
-                  }}>
-                    {unreadCount > 9 ? '9+' : unreadCount}
-                  </span>
-                )}
-              </button>
-
               {/* User badge */}
               <span style={{
                 fontSize: '0.78rem',

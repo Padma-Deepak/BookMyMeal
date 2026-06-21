@@ -172,7 +172,7 @@ const DashboardPage: React.FC = () => {
             display: 'flex',
             alignItems: 'center',
             gap: '0.4rem',
-            background: '#f16524',
+            background: '#1a3c2c',
             color: '#fff',
             border: 'none',
             borderRadius: 8,
@@ -251,11 +251,11 @@ const DashboardPage: React.FC = () => {
             style={{
               background: 'none',
               border: 'none',
-              borderBottom: activeTab === tab ? '2px solid #f16524' : '2px solid transparent',
+              borderBottom: activeTab === tab ? '2px solid #1a3c2c' : '2px solid transparent',
               padding: '0.6rem 1.25rem',
               cursor: 'pointer',
               fontWeight: activeTab === tab ? 600 : 400,
-              color: activeTab === tab ? '#f16524' : '#6b7280',
+              color: activeTab === tab ? '#1a3c2c' : '#6b7280',
               fontSize: '0.9rem',
               marginBottom: -1,
               textTransform: 'capitalize',
@@ -359,7 +359,7 @@ const DashboardPage: React.FC = () => {
               <button
                 type="submit"
                 disabled={creating}
-                style={{ background: creating ? '#fdba8c' : '#f16524', color: '#fff', border: 'none', borderRadius: 7, padding: '0.55rem 1.25rem', cursor: creating ? 'not-allowed' : 'pointer', fontWeight: 600, fontSize: '0.875rem', minHeight: 40 }}
+                style={{ background: creating ? '#7aab8e' : '#1a3c2c', color: '#fff', border: 'none', borderRadius: 7, padding: '0.55rem 1.25rem', cursor: creating ? 'not-allowed' : 'pointer', fontWeight: 600, fontSize: '0.875rem', minHeight: 40 }}
               >
                 {creating ? 'Creating…' : isCaterersTab ? 'Create Caterer' : 'Create Guest'}
               </button>
@@ -401,7 +401,7 @@ const DashboardPage: React.FC = () => {
           <div style={{ background: '#fff', borderRadius: 10, border: '1px solid #e5e7eb', overflow: 'hidden', boxShadow: '0 1px 3px rgba(0,0,0,0.04)' }}>
             <table style={{ width: '100%' }}>
               <thead>
-                <tr style={{ background: '#f9fafb', borderBottom: '1px solid #e5e7eb' }}>
+                <tr style={{ background: '#f0ece3', borderBottom: '1px solid #e5e7eb' }}>
                   <th style={{ padding: '0.7rem 1rem', textAlign: 'left', fontSize: '0.78rem', fontWeight: 600, color: '#6b7280', textTransform: 'uppercase', letterSpacing: '0.04em' }}>Guest</th>
                   <th style={{ padding: '0.7rem 0.75rem', textAlign: 'center', fontSize: '0.78rem', fontWeight: 600, color: '#6b7280', textTransform: 'uppercase', letterSpacing: '0.04em' }}>Orders</th>
                   <th style={{ padding: '0.7rem 0.75rem', textAlign: 'right', fontSize: '0.78rem', fontWeight: 600, color: '#6b7280', textTransform: 'uppercase', letterSpacing: '0.04em' }}>Total Spend</th>
@@ -440,13 +440,13 @@ const DashboardPage: React.FC = () => {
                       <div style={{ display: 'flex', gap: '0.5rem', justifyContent: 'flex-end', flexWrap: 'wrap' }}>
                         <button
                           onClick={() => navigate(`/manager/guest/${s.guest.id}/orders`)}
-                          style={{ background: '#f16524', color: '#fff', border: 'none', borderRadius: 6, padding: '0.35rem 0.75rem', cursor: 'pointer', fontSize: '0.8rem', fontWeight: 500, minHeight: 34 }}
+                          style={{ background: '#1a3c2c', color: '#fff', border: 'none', borderRadius: 6, padding: '0.35rem 0.75rem', cursor: 'pointer', fontSize: '0.8rem', fontWeight: 500, minHeight: 34 }}
                         >
                           Orders
                         </button>
                         <button
                           onClick={() => navigate(`/manager/bill/generate?guest=${s.guest.id}`)}
-                          style={{ background: '#fff', border: '1px solid #f16524', color: '#f16524', borderRadius: 6, padding: '0.35rem 0.75rem', cursor: 'pointer', fontSize: '0.8rem', fontWeight: 500, minHeight: 34 }}
+                          style={{ background: '#fff', border: '1px solid #1a3c2c', color: '#1a3c2c', borderRadius: 6, padding: '0.35rem 0.75rem', cursor: 'pointer', fontSize: '0.8rem', fontWeight: 500, minHeight: 34 }}
                         >
                           Generate Bill
                         </button>
@@ -483,7 +483,7 @@ const DashboardPage: React.FC = () => {
           <div style={{ background: '#fff', borderRadius: 10, border: '1px solid #e5e7eb', overflow: 'hidden', boxShadow: '0 1px 3px rgba(0,0,0,0.04)' }}>
             <table style={{ width: '100%' }}>
               <thead>
-                <tr style={{ background: '#f9fafb', borderBottom: '1px solid #e5e7eb' }}>
+                <tr style={{ background: '#f0ece3', borderBottom: '1px solid #e5e7eb' }}>
                   <th style={{ padding: '0.7rem 1rem', textAlign: 'left', fontSize: '0.78rem', fontWeight: 600, color: '#6b7280', textTransform: 'uppercase', letterSpacing: '0.04em' }}>Caterer</th>
                   <th style={{ padding: '0.7rem 0.75rem', textAlign: 'left', fontSize: '0.78rem', fontWeight: 600, color: '#6b7280', textTransform: 'uppercase', letterSpacing: '0.04em' }}>Contact</th>
                   <th style={{ padding: '0.7rem 1rem', textAlign: 'right', fontSize: '0.78rem', fontWeight: 600, color: '#6b7280', textTransform: 'uppercase', letterSpacing: '0.04em' }}>Status</th>

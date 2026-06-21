@@ -84,7 +84,7 @@ const ModifyOrderPage: React.FC = () => {
         </div>
         <button
           onClick={() => navigate('/caretaker/orders')}
-          style={{ background: 'none', border: 'none', color: '#f16524', cursor: 'pointer', fontSize: '0.875rem' }}
+          style={{ background: 'none', border: 'none', color: '#1a3c2c', cursor: 'pointer', fontSize: '0.875rem' }}
         >
           ← Back
         </button>
@@ -124,12 +124,12 @@ const ModifyOrderPage: React.FC = () => {
             <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
               <button
                 onClick={() => updateQty(idx, item.quantity - 1)}
-                style={{ width: 30, height: 30, border: '1px solid #d1d5db', borderRadius: 6, cursor: 'pointer', background: '#f9fafb', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '1rem', color: '#374151' }}
+                style={{ width: 30, height: 30, border: '1px solid #d1d5db', borderRadius: 6, cursor: 'pointer', background: '#f0ece3', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '1rem', color: '#374151' }}
               >−</button>
               <span style={{ minWidth: 24, textAlign: 'center', fontWeight: 600, color: '#111827' }}>{item.quantity}</span>
               <button
                 onClick={() => updateQty(idx, item.quantity + 1)}
-                style={{ width: 30, height: 30, border: '1px solid #d1d5db', borderRadius: 6, cursor: 'pointer', background: '#f9fafb', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '1rem', color: '#374151' }}
+                style={{ width: 30, height: 30, border: '1px solid #d1d5db', borderRadius: 6, cursor: 'pointer', background: '#f0ece3', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '1rem', color: '#374151' }}
               >+</button>
             </div>
 
@@ -169,7 +169,7 @@ const ModifyOrderPage: React.FC = () => {
         onClick={handleSave}
         disabled={saving || items.length === 0}
         style={{
-          background: saving || items.length === 0 ? '#e5e7eb' : '#f16524',
+          background: saving || items.length === 0 ? '#e5e7eb' : '#1a3c2c',
           color: saving || items.length === 0 ? '#9ca3af' : '#fff',
           border: 'none',
           borderRadius: 8,

@@ -20,7 +20,7 @@ const OrderSummaryPage: React.FC = () => {
           <p style={{ color: '#6b7280', marginBottom: '1rem' }}>Your cart is empty.</p>
           <button
             onClick={() => navigate('/guest/menu')}
-            style={{ background: '#f16524', color: '#fff', border: 'none', borderRadius: 8, padding: '0.6rem 1.5rem', cursor: 'pointer', fontWeight: 600, minHeight: 44 }}
+            style={{ background: '#1a3c2c', color: '#fff', border: 'none', borderRadius: 8, padding: '0.6rem 1.5rem', cursor: 'pointer', fontWeight: 600, minHeight: 44 }}
           >
             Browse Menu
           </button>
@@ -65,7 +65,7 @@ const OrderSummaryPage: React.FC = () => {
           <div style={{ display: 'flex', gap: '0.75rem', marginTop: '1.75rem' }}>
             <button
               onClick={() => navigate('/guest/menu')}
-              style={{ padding: '0.6rem 1.25rem', background: '#f16524', color: '#fff', border: 'none', borderRadius: 8, cursor: 'pointer', fontWeight: 600, minHeight: 44 }}
+              style={{ padding: '0.6rem 1.25rem', background: '#1a3c2c', color: '#fff', border: 'none', borderRadius: 8, cursor: 'pointer', fontWeight: 600, minHeight: 44 }}
             >
               Order More
             </button>
@@ -90,7 +90,7 @@ const OrderSummaryPage: React.FC = () => {
         </div>
         <button
           onClick={() => navigate('/guest/menu')}
-          style={{ background: 'none', border: 'none', color: '#f16524', cursor: 'pointer', fontSize: '0.875rem', padding: '0.25rem' }}
+          style={{ background: 'none', border: 'none', color: '#1a3c2c', cursor: 'pointer', fontSize: '0.875rem', padding: '0.25rem' }}
         >
           ← Menu
         </button>
@@ -100,7 +100,7 @@ const OrderSummaryPage: React.FC = () => {
       <div style={{ background: '#fff', borderRadius: 10, border: '1px solid #e5e7eb', overflow: 'hidden', marginBottom: '1.25rem', boxShadow: '0 1px 3px rgba(0,0,0,0.04)' }}>
         <table style={{ width: '100%' }}>
           <thead>
-            <tr style={{ background: '#f9fafb', borderBottom: '1px solid #e5e7eb' }}>
+            <tr style={{ background: '#f0ece3', borderBottom: '1px solid #e5e7eb' }}>
               <th style={{ padding: '0.65rem 1rem', textAlign: 'left', fontSize: '0.78rem', fontWeight: 600, color: '#6b7280', textTransform: 'uppercase', letterSpacing: '0.04em' }}>Item</th>
               <th style={{ padding: '0.65rem 0.5rem', textAlign: 'center', fontSize: '0.78rem', fontWeight: 600, color: '#6b7280', textTransform: 'uppercase', letterSpacing: '0.04em' }}>Qty</th>
               <th style={{ padding: '0.65rem 0.5rem', textAlign: 'center', fontSize: '0.78rem', fontWeight: 600, color: '#6b7280', textTransform: 'uppercase', letterSpacing: '0.04em' }}>Spicy</th>
@@ -124,12 +124,12 @@ const OrderSummaryPage: React.FC = () => {
                   <div style={{ display: 'inline-flex', alignItems: 'center', gap: '0.25rem' }}>
                     <button
                       onClick={() => item.quantity > 1 ? updateItem(item.menu_item_id, { quantity: item.quantity - 1 }) : removeItem(item.menu_item_id)}
-                      style={{ width: 26, height: 26, border: '1px solid #e5e7eb', borderRadius: 5, cursor: 'pointer', background: '#f9fafb', color: '#374151', fontWeight: 600 }}
+                      style={{ width: 26, height: 26, border: '1px solid #e5e7eb', borderRadius: 5, cursor: 'pointer', background: '#f0ece3', color: '#374151', fontWeight: 600 }}
                     >−</button>
                     <span style={{ minWidth: 22, textAlign: 'center', fontWeight: 600, color: '#111827' }}>{item.quantity}</span>
                     <button
                       onClick={() => updateItem(item.menu_item_id, { quantity: item.quantity + 1 })}
-                      style={{ width: 26, height: 26, border: '1px solid #e5e7eb', borderRadius: 5, cursor: 'pointer', background: '#f9fafb', color: '#374151', fontWeight: 600 }}
+                      style={{ width: 26, height: 26, border: '1px solid #e5e7eb', borderRadius: 5, cursor: 'pointer', background: '#f0ece3', color: '#374151', fontWeight: 600 }}
                     >+</button>
                   </div>
                 </td>
@@ -201,7 +201,7 @@ const OrderSummaryPage: React.FC = () => {
           disabled={submitting}
           style={{
             padding: '0.7rem 2rem',
-            background: submitting ? '#fdba8c' : '#f16524',
+            background: submitting ? '#7aab8e' : '#1a3c2c',
             color: '#fff',
             border: 'none',
             borderRadius: 8,

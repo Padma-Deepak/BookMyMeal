@@ -105,7 +105,7 @@ const ChangePasswordPage: React.FC = () => {
             <button
               type="submit"
               disabled={saving}
-              style={{ background: saving ? '#fdba8c' : '#f16524', color: '#fff', border: 'none', borderRadius: 7, padding: '0.55rem', cursor: saving ? 'not-allowed' : 'pointer', fontWeight: 600, fontSize: '0.9rem', minHeight: 40, marginTop: '0.25rem' }}
+              style={{ background: saving ? '#7aab8e' : '#1a3c2c', color: '#fff', border: 'none', borderRadius: 7, padding: '0.55rem', cursor: saving ? 'not-allowed' : 'pointer', fontWeight: 600, fontSize: '0.9rem', minHeight: 40, marginTop: '0.25rem' }}
             >
               {saving ? 'Saving…' : 'Update Password'}
             </button>

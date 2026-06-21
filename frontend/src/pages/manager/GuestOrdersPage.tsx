@@ -70,13 +70,13 @@ const GuestOrdersPage: React.FC = () => {
         <div style={{ display: 'flex', gap: '0.6rem', alignItems: 'center' }}>
           <button
             onClick={() => navigate(`/manager/bill/generate?guest=${guestId}`)}
-            style={{ background: '#f16524', color: '#fff', border: 'none', borderRadius: 8, padding: '0.55rem 1rem', cursor: 'pointer', fontWeight: 600, fontSize: '0.875rem', minHeight: 40 }}
+            style={{ background: '#1a3c2c', color: '#fff', border: 'none', borderRadius: 8, padding: '0.55rem 1rem', cursor: 'pointer', fontWeight: 600, fontSize: '0.875rem', minHeight: 40 }}
           >
             Generate Bill
           </button>
           <button
             onClick={() => navigate('/manager/dashboard')}
-            style={{ background: 'none', border: 'none', color: '#f16524', cursor: 'pointer', fontSize: '0.875rem' }}
+            style={{ background: 'none', border: 'none', color: '#1a3c2c', cursor: 'pointer', fontSize: '0.875rem' }}
           >
             ← Back
           </button>
@@ -90,7 +90,7 @@ const GuestOrdersPage: React.FC = () => {
       {/* ── Caretaker Expenses (out-of-pocket) ── */}
       {extPurchases.filter(ep => ep.is_paid_by_caretaker).length > 0 && (
         <div style={{ background: '#fff', border: '1px solid #e5e7eb', borderRadius: 10, overflow: 'hidden', boxShadow: '0 1px 3px rgba(0,0,0,0.04)', marginBottom: '1.25rem' }}>
-          <div style={{ padding: '0.6rem 1rem', background: '#f9fafb', borderBottom: '1px solid #e5e7eb', fontSize: '0.75rem', fontWeight: 600, color: '#6b7280', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
+          <div style={{ padding: '0.6rem 1rem', background: '#f0ece3', borderBottom: '1px solid #e5e7eb', fontSize: '0.75rem', fontWeight: 600, color: '#6b7280', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
             Caretaker Out-of-Pocket Expenses
           </div>
           <table style={{ width: '100%' }}>
@@ -103,7 +103,7 @@ const GuestOrdersPage: React.FC = () => {
             </thead>
             <tbody>
               {extPurchases.filter(ep => ep.is_paid_by_caretaker).map(ep => (
-                <tr key={ep.id} style={{ borderBottom: '1px solid #f9fafb' }}>
+                <tr key={ep.id} style={{ borderBottom: '1px solid #f0ece3' }}>
                   <td style={{ padding: '0.6rem 1rem', color: '#374151', fontWeight: 500, fontSize: '0.875rem' }}>{ep.item_name}</td>
                   <td style={{ padding: '0.6rem 0.5rem', color: '#6b7280', fontSize: '0.82rem' }}>{ep.vendor_name}</td>
                   <td style={{ padding: '0.6rem 1rem', textAlign: 'right', fontWeight: 500, color: '#111827', fontSize: '0.875rem' }}>₹{Number(ep.cost).toFixed(2)}</td>
@@ -118,7 +118,7 @@ const GuestOrdersPage: React.FC = () => {
                       </span>
                     )}
                     {ep.reimbursement_proof_url && (
-                      <a href={ep.reimbursement_proof_url} target="_blank" rel="noreferrer" style={{ marginLeft: 6, fontSize: '0.73rem', color: '#f16524' }}>proof</a>
+                      <a href={ep.reimbursement_proof_url} target="_blank" rel="noreferrer" style={{ marginLeft: 6, fontSize: '0.73rem', color: '#1a3c2c' }}>proof</a>
                     )}
                   </td>
                   <td style={{ padding: '0.6rem 1rem', textAlign: 'right' }}>
@@ -154,7 +154,7 @@ const GuestOrdersPage: React.FC = () => {
             sum + (item.is_complimentary ? 0 : (item.customer_price ?? 0) * item.quantity), 0);
           return (
             <div key={order.id} style={{ background: '#fff', border: '1px solid #e5e7eb', borderRadius: 10, overflow: 'hidden', boxShadow: '0 1px 3px rgba(0,0,0,0.04)' }}>
-              <div style={{ padding: '0.75rem 1rem', background: '#f9fafb', borderBottom: '1px solid #e5e7eb', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <div style={{ padding: '0.75rem 1rem', background: '#f0ece3', borderBottom: '1px solid #e5e7eb', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                 <span style={{ fontSize: '0.82rem', color: '#6b7280' }}>{new Date(order.created_at).toLocaleString()}</span>
                 <div style={{ display: 'flex', gap: '0.75rem', alignItems: 'center' }}>
                   <span style={{ fontWeight: 700, color: '#111827' }}>₹{orderTotal.toFixed(2)}</span>
@@ -168,7 +168,7 @@ const GuestOrdersPage: React.FC = () => {
                   {(order.items_detail || order.items).map((item, idx) => {
                     const d = item as { name?: string; customer_price?: number; quantity: number; is_complimentary?: boolean; spicy_level?: string };
                     return (
-                      <tr key={idx} style={{ borderBottom: idx < (order.items_detail || order.items).length - 1 ? '1px solid #f9fafb' : undefined }}>
+                      <tr key={idx} style={{ borderBottom: idx < (order.items_detail || order.items).length - 1 ? '1px solid #f0ece3' : undefined }}>
                         <td style={{ padding: '0.5rem 1rem', color: '#374151', fontWeight: 500 }}>{d.name || (item as { menu_item_id: string }).menu_item_id}</td>
                         <td style={{ padding: '0.5rem', textAlign: 'center', color: '#6b7280', fontSize: '0.85rem' }}>×{d.quantity}</td>
                         <td style={{ padding: '0.5rem', textAlign: 'center', color: '#9ca3af', fontSize: '0.8rem' }}>{d.spicy_level}</td>

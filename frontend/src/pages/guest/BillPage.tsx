@@ -47,7 +47,7 @@ const BillPage: React.FC = () => {
         </div>
         <button
           onClick={() => navigate('/guest/menu')}
-          style={{ background: 'none', border: 'none', color: '#f16524', cursor: 'pointer', fontSize: '0.875rem' }}
+          style={{ background: 'none', border: 'none', color: '#1a3c2c', cursor: 'pointer', fontSize: '0.875rem' }}
         >
           ← Menu
         </button>
@@ -58,13 +58,13 @@ const BillPage: React.FC = () => {
         <div style={{ background: '#fff', border: '1px solid #e5e7eb', borderRadius: 10, padding: '1rem 1.25rem', marginBottom: '1.5rem', boxShadow: '0 1px 3px rgba(0,0,0,0.04)' }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.875rem' }}>
             <h2 style={{ fontSize: '0.9rem', fontWeight: 600 }}>Spending Breakdown</h2>
-            <span style={{ fontWeight: 700, color: '#f16524', fontSize: '1rem' }}>Total ₹{grandTotal.toFixed(2)}</span>
+            <span style={{ fontWeight: 700, color: '#1a3c2c', fontSize: '1rem' }}>Total ₹{grandTotal.toFixed(2)}</span>
           </div>
           <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.6rem' }}>
             {Object.entries(spendByCategory).map(([cat, amount]) => (
-              <div key={cat} style={{ background: '#fff8f5', border: '1px solid #fed7aa', borderRadius: 8, padding: '0.5rem 0.875rem', minWidth: 100 }}>
+              <div key={cat} style={{ background: '#e6efe9', border: '1px solid #fed7aa', borderRadius: 8, padding: '0.5rem 0.875rem', minWidth: 100 }}>
                 <div style={{ fontSize: '0.75rem', color: '#9ca3af', marginBottom: 2 }}>{CATEGORY_LABELS[cat] ?? cat}</div>
-                <div style={{ fontWeight: 700, color: '#f16524' }}>₹{amount.toFixed(2)}</div>
+                <div style={{ fontWeight: 700, color: '#1a3c2c' }}>₹{amount.toFixed(2)}</div>
               </div>
             ))}
           </div>
@@ -77,7 +77,7 @@ const BillPage: React.FC = () => {
           <p style={{ fontWeight: 500 }}>No orders yet.</p>
           <button
             onClick={() => navigate('/guest/menu')}
-            style={{ marginTop: '0.75rem', background: '#f16524', color: '#fff', border: 'none', borderRadius: 8, padding: '0.55rem 1.25rem', cursor: 'pointer', fontWeight: 600, fontSize: '0.875rem' }}
+            style={{ marginTop: '0.75rem', background: '#1a3c2c', color: '#fff', border: 'none', borderRadius: 8, padding: '0.55rem 1.25rem', cursor: 'pointer', fontWeight: 600, fontSize: '0.875rem' }}
           >
             Browse Menu
           </button>
@@ -90,7 +90,7 @@ const BillPage: React.FC = () => {
               (sum, item) => sum + (item.is_complimentary ? 0 : (item.customer_price ?? 0) * item.quantity), 0);
             return (
               <div key={order.id} style={{ background: '#fff', border: '1px solid #e5e7eb', borderRadius: 10, overflow: 'hidden', boxShadow: '0 1px 3px rgba(0,0,0,0.04)' }}>
-                <div style={{ padding: '0.65rem 1rem', background: '#f9fafb', borderBottom: '1px solid #e5e7eb', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <div style={{ padding: '0.65rem 1rem', background: '#f0ece3', borderBottom: '1px solid #e5e7eb', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                   <span style={{ fontSize: '0.82rem', color: '#6b7280' }}>
                     {new Date(order.created_at).toLocaleString()}
                   </span>
@@ -110,7 +110,7 @@ const BillPage: React.FC = () => {
                     {(order.items_detail || order.items || []).map((item, idx) => {
                       const d = item as { name?: string; customer_price?: number; quantity: number; is_complimentary?: boolean; spicy_level?: string };
                       return (
-                        <tr key={idx} style={{ borderBottom: idx < (order.items_detail || order.items || []).length - 1 ? '1px solid #f9fafb' : undefined }}>
+                        <tr key={idx} style={{ borderBottom: idx < (order.items_detail || order.items || []).length - 1 ? '1px solid #f0ece3' : undefined }}>
                           <td style={{ padding: '0.5rem 1rem', color: '#374151', fontWeight: 500 }}>
                             {d.name || (item as { menu_item_id: string }).menu_item_id}
                             {d.is_complimentary && (

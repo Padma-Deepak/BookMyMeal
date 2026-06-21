@@ -28,8 +28,7 @@ const MenuPage: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [quantities, setQuantities] = useState<Record<string, number>>({});
   const [spicyLevels, setSpicyLevels] = useState<Record<string, string>>({});
-  const [added, setAdded] = useState<Record<string, boolean>>({});
-  const { addItem, items: cartItems } = useCart();
+  const { addItem, updateItem, removeItem, items: cartItems } = useCart();
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -46,6 +45,9 @@ const MenuPage: React.FC = () => {
 
   const orderedCategories = CATEGORY_ORDER.filter(c => grouped[c]);
 
+  // Total quantity across all cart items (2 idlis + 1 dosa = 3)
+  const totalCartQty = cartItems.reduce((sum, i) => sum + i.quantity, 0);
+
   const handleAddToCart = (item: MenuItem) => {
     const qty = quantities[item.id] || 1;
     const spicy = spicyLevels[item.id] || 'None';
@@ -58,8 +60,32 @@ const MenuPage: React.FC = () => {
       spicy_level: spicy,
       is_complimentary: item.is_complimentary,
     });
-    setAdded(a => ({ ...a, [item.id]: true }));
-    setTimeout(() => setAdded(a => ({ ...a, [item.id]: false })), 1500);
+    // Reset local quantity to 1 after adding
+    setQuantities(q => ({ ...q, [item.id]: 1 }));
+  };
+
+  const handleDecrement = (itemId: string) => {
+    const cartItem = cartItems.find(i => i.menu_item_id === itemId);
+    if (cartItem) {
+      const newQty = cartItem.quantity - 1;
+      if (newQty <= 0) {
+        removeItem(itemId);
+        setQuantities(q => ({ ...q, [itemId]: 1 }));
+      } else {
+        updateItem(itemId, { quantity: newQty });
+      }
+    } else {
+      setQuantities(q => ({ ...q, [itemId]: Math.max(1, (q[itemId] || 1) - 1) }));
+    }
+  };
+
+  const handleIncrement = (itemId: string) => {
+    const cartItem = cartItems.find(i => i.menu_item_id === itemId);
+    if (cartItem) {
+      updateItem(itemId, { quantity: cartItem.quantity + 1 });
+    } else {
+      setQuantities(q => ({ ...q, [itemId]: (q[itemId] || 1) + 1 }));
+    }
   };
 
   if (loading) return <Layout><p style={{ color: '#6b7280' }}>Loading menu…</p></Layout>;
@@ -78,7 +104,7 @@ const MenuPage: React.FC = () => {
             display: 'flex',
             alignItems: 'center',
             gap: '0.4rem',
-            background: '#f16524',
+            background: '#1a3c2c',
             color: '#fff',
             border: 'none',
             borderRadius: 8,
@@ -92,10 +118,10 @@ const MenuPage: React.FC = () => {
         >
           <ShoppingCart size={16} />
           View Order
-          {cartItems.length > 0 && (
+          {totalCartQty > 0 && (
             <span style={{
               background: '#fff',
-              color: '#f16524',
+              color: '#1a3c2c',
               borderRadius: '50%',
               width: 20,
               height: 20,
@@ -105,7 +131,7 @@ const MenuPage: React.FC = () => {
               alignItems: 'center',
               justifyContent: 'center',
             }}>
-              {cartItems.length}
+              {totalCartQty}
             </span>
           )}
         </button>
@@ -125,6 +151,11 @@ const MenuPage: React.FC = () => {
           <div style={{ display: 'flex', flexDirection: 'column', gap: '0.625rem' }}>
             {grouped[category].map(item => {
               const blocked = isWithinNoticePeriod(item.notice_period_minutes);
+              const cartItem = cartItems.find(i => i.menu_item_id === item.id);
+              const isInCart = !!cartItem;
+              // When in cart: show cart quantity. When not: show local pending quantity.
+              const displayQty = isInCart ? cartItem.quantity : (quantities[item.id] || 1);
+
               return (
                 <div
                   key={item.id}
@@ -169,52 +200,72 @@ const MenuPage: React.FC = () => {
                   {/* Controls */}
                   {!blocked && (
                     <div style={{ display: 'flex', gap: '0.75rem', alignItems: 'center', marginTop: '0.875rem', flexWrap: 'wrap' }}>
-                      {/* Qty stepper */}
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '0.3rem', background: '#f9fafb', borderRadius: 7, padding: '0.2rem', border: '1px solid #e5e7eb' }}>
+                      {/* Qty stepper — synced with cart when item is in cart */}
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '0.3rem', background: '#f0ece3', borderRadius: 7, padding: '0.2rem', border: '1px solid #e5e7eb' }}>
                         <button
-                          onClick={() => setQuantities(q => ({ ...q, [item.id]: Math.max(1, (q[item.id] || 1) - 1) }))}
+                          onClick={() => handleDecrement(item.id)}
                           style={{ width: 30, height: 30, borderRadius: 5, border: 'none', cursor: 'pointer', background: '#fff', color: '#374151', fontWeight: 600, fontSize: '1rem', boxShadow: '0 1px 2px rgba(0,0,0,0.06)' }}
                         >
                           −
                         </button>
                         <span style={{ minWidth: 28, textAlign: 'center', fontWeight: 600, color: '#111827' }}>
-                          {quantities[item.id] || 1}
+                          {displayQty}
                         </span>
                         <button
-                          onClick={() => setQuantities(q => ({ ...q, [item.id]: (q[item.id] || 1) + 1 }))}
+                          onClick={() => handleIncrement(item.id)}
                           style={{ width: 30, height: 30, borderRadius: 5, border: 'none', cursor: 'pointer', background: '#fff', color: '#374151', fontWeight: 600, fontSize: '1rem', boxShadow: '0 1px 2px rgba(0,0,0,0.06)' }}
                         >
                           +
                         </button>
                       </div>
 
-                      {/* Spicy dropdown */}
-                      <select
-                        value={spicyLevels[item.id] || 'None'}
-                        onChange={e => setSpicyLevels(s => ({ ...s, [item.id]: e.target.value }))}
-                        style={{ padding: '0.35rem 0.55rem', borderRadius: 6, border: '1px solid #e5e7eb', background: '#f9fafb', fontSize: '0.82rem', color: '#374151' }}
-                      >
-                        {SPICY_LEVELS.map(l => <option key={l}>{l}</option>)}
-                      </select>
+                      {/* Spicy dropdown — hidden when item is already in cart */}
+                      {!isInCart && (
+                        <select
+                          value={spicyLevels[item.id] || 'None'}
+                          onChange={e => setSpicyLevels(s => ({ ...s, [item.id]: e.target.value }))}
+                          style={{ padding: '0.35rem 0.55rem', borderRadius: 6, border: '1px solid #e5e7eb', background: '#f0ece3', fontSize: '0.82rem', color: '#374151' }}
+                        >
+                          {SPICY_LEVELS.map(l => <option key={l}>{l}</option>)}
+                        </select>
+                      )}
 
-                      {/* Add button */}
-                      <button
-                        onClick={() => handleAddToCart(item)}
-                        style={{
-                          background: added[item.id] ? '#16a34a' : '#f16524',
-                          color: '#fff',
-                          border: 'none',
-                          borderRadius: 7,
-                          padding: '0.4rem 0.875rem',
-                          cursor: 'pointer',
-                          fontWeight: 600,
-                          fontSize: '0.85rem',
-                          minHeight: 36,
-                          transition: 'background 0.2s',
-                        }}
-                      >
-                        {added[item.id] ? '✓ Added' : 'Add to Order'}
-                      </button>
+                      {/* Add / Added button */}
+                      {isInCart ? (
+                        <button
+                          disabled
+                          style={{
+                            background: '#16a34a',
+                            color: '#fff',
+                            border: 'none',
+                            borderRadius: 7,
+                            padding: '0.4rem 0.875rem',
+                            cursor: 'default',
+                            fontWeight: 600,
+                            fontSize: '0.85rem',
+                            minHeight: 36,
+                          }}
+                        >
+                          ✓ Added
+                        </button>
+                      ) : (
+                        <button
+                          onClick={() => handleAddToCart(item)}
+                          style={{
+                            background: '#1a3c2c',
+                            color: '#fff',
+                            border: 'none',
+                            borderRadius: 7,
+                            padding: '0.4rem 0.875rem',
+                            cursor: 'pointer',
+                            fontWeight: 600,
+                            fontSize: '0.85rem',
+                            minHeight: 36,
+                          }}
+                        >
+                          Add to Order
+                        </button>
+                      )}
                     </div>
                   )}
 

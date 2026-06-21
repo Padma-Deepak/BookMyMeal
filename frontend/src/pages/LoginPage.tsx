@@ -30,7 +30,7 @@ const LoginPage: React.FC = () => {
   return (
     <div style={{
       minHeight: '100vh',
-      background: '#f9fafb',
+      background: '#f0ece3',
       display: 'flex',
       alignItems: 'center',
       justifyContent: 'center',
@@ -45,7 +45,7 @@ const LoginPage: React.FC = () => {
             justifyContent: 'center',
             width: 52,
             height: 52,
-            background: '#f16524',
+            background: '#1a3c2c',
             borderRadius: 14,
             marginBottom: '0.875rem',
           }}>
@@ -146,7 +146,7 @@ const LoginPage: React.FC = () => {
               style={{
                 marginTop: '0.25rem',
                 padding: '0.65rem',
-                background: loading ? '#fdba8c' : '#f16524',
+                background: loading ? '#7aab8e' : '#1a3c2c',
                 color: '#fff',
                 border: 'none',
                 borderRadius: 8,

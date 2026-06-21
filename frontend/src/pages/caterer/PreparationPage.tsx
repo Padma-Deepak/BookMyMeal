@@ -89,7 +89,7 @@ const PreparationPage: React.FC = () => {
                         cursor: 'pointer',
                         padding: '0.45rem 0.65rem',
                         borderRadius: 7,
-                        background: isDone ? '#f0fdf4' : '#f9fafb',
+                        background: isDone ? '#f0fdf4' : '#f0ece3',
                         border: `1px solid ${isDone ? '#bbf7d0' : '#f3f4f6'}`,
                         transition: 'background 0.15s',
                       }}

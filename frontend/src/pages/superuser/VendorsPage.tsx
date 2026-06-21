@@ -42,7 +42,7 @@ const VendorsPage: React.FC = () => {
     <div style={{ background: '#fff', border: '1px solid #e5e7eb', borderRadius: 10, overflow: 'hidden', boxShadow: '0 1px 3px rgba(0,0,0,0.04)' }}>
       <table style={{ width: '100%', borderCollapse: 'collapse' }}>
         <thead>
-          <tr style={{ background: '#f9fafb', borderBottom: '1px solid #e5e7eb' }}>
+          <tr style={{ background: '#f0ece3', borderBottom: '1px solid #e5e7eb' }}>
             <th style={{ padding: '0.6rem 1rem', textAlign: 'left', fontSize: '0.75rem', fontWeight: 600, color: '#6b7280', textTransform: 'uppercase', letterSpacing: '0.04em' }}>Vendor Name</th>
             <th style={{ padding: '0.6rem', textAlign: 'center', fontSize: '0.75rem', fontWeight: 600, color: '#6b7280', textTransform: 'uppercase', letterSpacing: '0.04em' }}>Orders</th>
             <th style={{ padding: '0.6rem', textAlign: 'left', fontSize: '0.75rem', fontWeight: 600, color: '#6b7280', textTransform: 'uppercase', letterSpacing: '0.04em' }}>First Seen</th>
@@ -66,7 +66,7 @@ const VendorsPage: React.FC = () => {
                     }}
                     style={{
                       padding: '0.35rem 0.55rem',
-                      border: '1px solid #f16524',
+                      border: '1px solid #1a3c2c',
                       borderRadius: 6,
                       fontSize: '0.9rem',
                       width: '100%',
@@ -80,7 +80,7 @@ const VendorsPage: React.FC = () => {
               </td>
               <td style={{ padding: '0.75rem', textAlign: 'center' }}>
                 <span style={{
-                  background: '#fff8f5', color: '#c2410c',
+                  background: '#e6efe9', color: '#c2410c',
                   padding: '2px 8px', borderRadius: 12,
                   fontSize: '0.78rem', fontWeight: 600,
                 }}>

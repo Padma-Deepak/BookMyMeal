@@ -154,7 +154,7 @@ const OrdersPage: React.FC = () => {
                           {items.map((item, idx) => {
                             const d = item as { name?: string; quantity: number; spicy_level?: string };
                             return (
-                              <tr key={idx} style={{ borderTop: idx > 0 ? '1px solid #f9fafb' : undefined }}>
+                              <tr key={idx} style={{ borderTop: idx > 0 ? '1px solid #f0ece3' : undefined }}>
                                 <td style={{ padding: '0.3rem 0', color: '#374151', fontWeight: 500 }}>
                                   {d.name || (item as { menu_item_id: string }).menu_item_id}
                                 </td>
@@ -172,13 +172,13 @@ const OrdersPage: React.FC = () => {
                       )}
                       <button
                         onClick={() => startDecision(order)}
-                        style={{ background: '#f16524', color: '#fff', border: 'none', borderRadius: 7, padding: '0.45rem 1.125rem', cursor: 'pointer', fontWeight: 600, fontSize: '0.875rem', minHeight: 38 }}
+                        style={{ background: '#1a3c2c', color: '#fff', border: 'none', borderRadius: 7, padding: '0.45rem 1.125rem', cursor: 'pointer', fontWeight: 600, fontSize: '0.875rem', minHeight: 38 }}
                       >
                         Make Decision
                       </button>
                     </>
                   ) : (
-                    <div style={{ background: '#f9fafb', border: '1px solid #e5e7eb', borderRadius: 8, padding: '1rem' }}>
+                    <div style={{ background: '#f0ece3', border: '1px solid #e5e7eb', borderRadius: 8, padding: '1rem' }}>
                       <p style={{ fontWeight: 600, fontSize: '0.875rem', color: '#374151', marginBottom: '0.75rem' }}>
                         Accept or reject each item — rejected items will be removed from the order:
                       </p>
@@ -211,7 +211,7 @@ const OrdersPage: React.FC = () => {
                                 <button
                                   onClick={() => toggleItem(idx, true)}
                                   style={{
-                                    background: dec.accepted ? '#d1fae5' : '#f9fafb',
+                                    background: dec.accepted ? '#d1fae5' : '#f0ece3',
                                     border: `1px solid ${dec.accepted ? '#6ee7b7' : '#d1d5db'}`,
                                     color: dec.accepted ? '#065f46' : '#6b7280',
                                     borderRadius: 6,
@@ -227,7 +227,7 @@ const OrdersPage: React.FC = () => {
                                 <button
                                   onClick={() => toggleItem(idx, false)}
                                   style={{
-                                    background: !dec.accepted ? '#fee2e2' : '#f9fafb',
+                                    background: !dec.accepted ? '#fee2e2' : '#f0ece3',
                                     border: `1px solid ${!dec.accepted ? '#fca5a5' : '#d1d5db'}`,
                                     color: !dec.accepted ? '#991b1b' : '#6b7280',
                                     borderRadius: 6,
@@ -278,7 +278,7 @@ const OrdersPage: React.FC = () => {
                           onClick={() => handleSubmitDecision(order)}
                           disabled={processingId === order.id}
                           style={{
-                            background: processingId === order.id ? '#e5e7eb' : '#f16524',
+                            background: processingId === order.id ? '#e5e7eb' : '#1a3c2c',
                             color: processingId === order.id ? '#9ca3af' : '#fff',
                             border: 'none',
                             borderRadius: 7,
@@ -324,7 +324,7 @@ const OrdersPage: React.FC = () => {
                     {(order.items_detail ?? order.items ?? []).map((item, idx) => {
                       const d = item as { name?: string; quantity: number; spicy_level?: string };
                       return (
-                        <tr key={idx} style={{ borderTop: idx > 0 ? '1px solid #f9fafb' : undefined }}>
+                        <tr key={idx} style={{ borderTop: idx > 0 ? '1px solid #f0ece3' : undefined }}>
                           <td style={{ padding: '0.3rem 0', color: '#374151', fontWeight: 500 }}>
                             {d.name || (item as { menu_item_id: string }).menu_item_id}
                           </td>

@@ -58,7 +58,7 @@ const ExternalPurchaseHistoryPage: React.FC = () => {
         <div style={{ background: '#fff', borderRadius: 10, border: '1px solid #e5e7eb', overflow: 'hidden', boxShadow: '0 1px 3px rgba(0,0,0,0.04)' }}>
           <table style={{ width: '100%' }}>
             <thead>
-              <tr style={{ background: '#f9fafb', borderBottom: '1px solid #e5e7eb' }}>
+              <tr style={{ background: '#f0ece3', borderBottom: '1px solid #e5e7eb' }}>
                 {['Date', 'Item', 'Vendor', 'Qty', 'Cost', 'Billing', ''].map(h => (
                   <th
                     key={h}

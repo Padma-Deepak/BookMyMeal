@@ -112,7 +112,7 @@ const MenuManagementPage: React.FC = () => {
         </div>
         <button
           onClick={() => { setShowAddForm(v => !v); setAddError(''); }}
-          style={{ display: 'flex', alignItems: 'center', gap: '0.35rem', background: '#f16524', color: '#fff', border: 'none', borderRadius: 8, padding: '0.55rem 1rem', cursor: 'pointer', fontWeight: 600, fontSize: '0.875rem', minHeight: 40 }}
+          style={{ display: 'flex', alignItems: 'center', gap: '0.35rem', background: '#1a3c2c', color: '#fff', border: 'none', borderRadius: 8, padding: '0.55rem 1rem', cursor: 'pointer', fontWeight: 600, fontSize: '0.875rem', minHeight: 40 }}
         >
           <Plus size={15} /> Add Item
         </button>
@@ -152,7 +152,7 @@ const MenuManagementPage: React.FC = () => {
               </div>
             )}
             <div style={{ display: 'flex', gap: '0.6rem' }}>
-              <button type="submit" disabled={saving} style={{ background: saving ? '#fdba8c' : '#f16524', color: '#fff', border: 'none', borderRadius: 7, padding: '0.5rem 1.25rem', cursor: saving ? 'not-allowed' : 'pointer', fontWeight: 600, fontSize: '0.875rem', minHeight: 38 }}>
+              <button type="submit" disabled={saving} style={{ background: saving ? '#7aab8e' : '#1a3c2c', color: '#fff', border: 'none', borderRadius: 7, padding: '0.5rem 1.25rem', cursor: saving ? 'not-allowed' : 'pointer', fontWeight: 600, fontSize: '0.875rem', minHeight: 38 }}>
                 {saving ? 'Saving…' : 'Save Item'}
               </button>
               <button type="button" onClick={() => setShowAddForm(false)} style={{ background: 'none', border: '1px solid #e5e7eb', borderRadius: 7, padding: '0.5rem 0.875rem', cursor: 'pointer', color: '#374151', fontSize: '0.875rem', minHeight: 38 }}>

@@ -74,7 +74,7 @@ const GenerateBillPage: React.FC = () => {
     return (
       <Layout>
         <p style={{ color: '#6b7280' }}>No guest selected. </p>
-        <button onClick={() => navigate('/manager/dashboard')} style={{ color: '#f16524', background: 'none', border: 'none', cursor: 'pointer' }}>← Dashboard</button>
+        <button onClick={() => navigate('/manager/dashboard')} style={{ color: '#1a3c2c', background: 'none', border: 'none', cursor: 'pointer' }}>← Dashboard</button>
       </Layout>
     );
   }
@@ -87,7 +87,7 @@ const GenerateBillPage: React.FC = () => {
           <h1 style={{ fontSize: '1.25rem', fontWeight: 700 }}>Generate Bill</h1>
           <p style={{ color: '#6b7280', fontSize: '0.875rem', marginTop: 2 }}>Select orders to include and apply discount</p>
         </div>
-        <button onClick={() => navigate('/manager/dashboard')} style={{ background: 'none', border: 'none', color: '#f16524', cursor: 'pointer', fontSize: '0.875rem' }}>← Back</button>
+        <button onClick={() => navigate('/manager/dashboard')} style={{ background: 'none', border: 'none', color: '#1a3c2c', cursor: 'pointer', fontSize: '0.875rem' }}>← Back</button>
       </div>
 
       {orders.length === 0 && (
@@ -115,18 +115,18 @@ const GenerateBillPage: React.FC = () => {
                     alignItems: 'flex-start',
                     gap: '0.75rem',
                     background: '#fff',
-                    border: `1px solid ${selected ? '#f16524' : '#e5e7eb'}`,
+                    border: `1px solid ${selected ? '#1a3c2c' : '#e5e7eb'}`,
                     borderRadius: 10,
                     padding: '0.875rem 1rem',
                     cursor: 'pointer',
-                    boxShadow: selected ? '0 0 0 1px #f16524' : '0 1px 2px rgba(0,0,0,0.04)',
+                    boxShadow: selected ? '0 0 0 1px #1a3c2c' : '0 1px 2px rgba(0,0,0,0.04)',
                   }}
                 >
                   <input
                     type="checkbox"
                     checked={selected}
                     onChange={() => toggleOrder(order.id)}
-                    style={{ marginTop: 2, width: 17, height: 17, cursor: 'pointer', accentColor: '#f16524' }}
+                    style={{ marginTop: 2, width: 17, height: 17, cursor: 'pointer', accentColor: '#1a3c2c' }}
                   />
                   <div style={{ flex: 1 }}>
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.25rem' }}>
@@ -181,7 +181,7 @@ const GenerateBillPage: React.FC = () => {
               )}
               <div style={{ display: 'flex', justifyContent: 'space-between', fontWeight: 700, fontSize: '1rem', marginTop: '0.4rem', paddingTop: '0.4rem', borderTop: '1px solid #e5e7eb' }}>
                 <span>Grand Total</span>
-                <span style={{ color: '#f16524' }}>₹{grandTotal.toFixed(2)}</span>
+                <span style={{ color: '#1a3c2c' }}>₹{grandTotal.toFixed(2)}</span>
               </div>
             </div>
           </div>
@@ -197,7 +197,7 @@ const GenerateBillPage: React.FC = () => {
             disabled={generating || selectedOrderIds.size === 0}
             style={{
               marginTop: '1.25rem',
-              background: generating || selectedOrderIds.size === 0 ? '#e5e7eb' : '#f16524',
+              background: generating || selectedOrderIds.size === 0 ? '#e5e7eb' : '#1a3c2c',
               color: generating || selectedOrderIds.size === 0 ? '#9ca3af' : '#fff',
               border: 'none',
               borderRadius: 8,

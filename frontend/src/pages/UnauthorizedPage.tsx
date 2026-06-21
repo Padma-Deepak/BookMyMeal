@@ -6,7 +6,7 @@ const UnauthorizedPage: React.FC = () => {
   return (
     <div style={{
       minHeight: '100vh',
-      background: '#f9fafb',
+      background: '#f0ece3',
       display: 'flex',
       alignItems: 'center',
       justifyContent: 'center',
@@ -40,7 +40,7 @@ const UnauthorizedPage: React.FC = () => {
           onClick={() => navigate('/')}
           style={{
             padding: '0.6rem 1.5rem',
-            background: '#f16524',
+            background: '#1a3c2c',
             color: '#fff',
             border: 'none',
             borderRadius: 8,

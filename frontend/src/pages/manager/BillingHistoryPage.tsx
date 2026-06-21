@@ -91,7 +91,7 @@ const BillingHistoryPage: React.FC = () => {
         <div style={{ background: '#fff', borderRadius: 10, border: '1px solid #e5e7eb', overflow: 'hidden', boxShadow: '0 1px 3px rgba(0,0,0,0.04)' }}>
           <table style={{ width: '100%' }}>
             <thead>
-              <tr style={{ background: '#f9fafb', borderBottom: '1px solid #e5e7eb' }}>
+              <tr style={{ background: '#f0ece3', borderBottom: '1px solid #e5e7eb' }}>
                 <th style={{ padding: '0.7rem 1rem', textAlign: 'left', fontSize: '0.78rem', fontWeight: 600, color: '#6b7280', textTransform: 'uppercase', letterSpacing: '0.04em' }}>Guest</th>
                 <th style={{ padding: '0.7rem 0.75rem', textAlign: 'left', fontSize: '0.78rem', fontWeight: 600, color: '#6b7280', textTransform: 'uppercase', letterSpacing: '0.04em' }}>Date</th>
                 <th style={{ padding: '0.7rem 0.75rem', textAlign: 'right', fontSize: '0.78rem', fontWeight: 600, color: '#6b7280', textTransform: 'uppercase', letterSpacing: '0.04em' }}>Total</th>
@@ -128,7 +128,7 @@ const BillingHistoryPage: React.FC = () => {
                     <div style={{ display: 'flex', gap: '0.4rem', justifyContent: 'flex-end' }}>
                       <button
                         onClick={() => navigate(`/manager/bill/${bill.id}`)}
-                        style={{ background: '#f16524', color: '#fff', border: 'none', borderRadius: 6, padding: '0.3rem 0.7rem', cursor: 'pointer', fontSize: '0.8rem', fontWeight: 500, minHeight: 32 }}
+                        style={{ background: '#1a3c2c', color: '#fff', border: 'none', borderRadius: 6, padding: '0.3rem 0.7rem', cursor: 'pointer', fontSize: '0.8rem', fontWeight: 500, minHeight: 32 }}
                       >
                         View
                       </button>

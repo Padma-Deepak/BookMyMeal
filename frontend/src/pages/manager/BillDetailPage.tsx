@@ -144,7 +144,7 @@ const BillDetailPage: React.FC = () => {
           </a>
           <button
             onClick={() => navigate('/manager/dashboard')}
-            style={{ background: 'none', border: 'none', color: '#f16524', cursor: 'pointer', fontSize: '0.875rem' }}
+            style={{ background: 'none', border: 'none', color: '#1a3c2c', cursor: 'pointer', fontSize: '0.875rem' }}
           >
             ← Back
           </button>
@@ -154,7 +154,7 @@ const BillDetailPage: React.FC = () => {
       {/* Orders */}
       {orders.map(order => (
         <div key={order.id} style={sectionCard}>
-          <div style={{ padding: '0.6rem 1rem', background: '#f9fafb', borderBottom: '1px solid #e5e7eb', fontSize: '0.8rem', color: '#6b7280', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+          <div style={{ padding: '0.6rem 1rem', background: '#f0ece3', borderBottom: '1px solid #e5e7eb', fontSize: '0.8rem', color: '#6b7280', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
             <span>Order · {new Date(order.created_at).toLocaleString()}</span>
             {order.status === 'resolved' && (
               <span style={{ background: '#f0fdf4', color: '#166534', fontSize: '0.72rem', fontWeight: 600, padding: '1px 6px', borderRadius: 10 }}>Caretaker Resolved</span>
@@ -165,7 +165,7 @@ const BillDetailPage: React.FC = () => {
               {(order.items_detail || order.items).map((item, idx) => {
                 const d = item as { name?: string; customer_price?: number; quantity: number; is_complimentary?: boolean; spicy_level?: string };
                 return (
-                  <tr key={idx} style={{ borderBottom: idx < (order.items_detail || order.items).length - 1 ? '1px solid #f9fafb' : undefined }}>
+                  <tr key={idx} style={{ borderBottom: idx < (order.items_detail || order.items).length - 1 ? '1px solid #f0ece3' : undefined }}>
                     <td style={{ padding: '0.5rem 1rem', color: '#374151', fontWeight: 500 }}>
                       {d.name || (item as { menu_item_id: string }).menu_item_id}
                       {d.is_complimentary && (
@@ -190,13 +190,13 @@ const BillDetailPage: React.FC = () => {
       {/* External purchases on bill (guest pays) */}
       {externalPurchases.length > 0 && (
         <div style={sectionCard}>
-          <div style={{ padding: '0.6rem 1rem', background: '#f9fafb', borderBottom: '1px solid #e5e7eb', fontSize: '0.82rem', fontWeight: 600, color: '#374151' }}>
+          <div style={{ padding: '0.6rem 1rem', background: '#f0ece3', borderBottom: '1px solid #e5e7eb', fontSize: '0.82rem', fontWeight: 600, color: '#374151' }}>
             Caretaker Purchases
           </div>
           <table style={{ width: '100%' }}>
             <tbody>
               {externalPurchases.map(ep => (
-                <tr key={ep.id} style={{ borderBottom: '1px solid #f9fafb' }}>
+                <tr key={ep.id} style={{ borderBottom: '1px solid #f0ece3' }}>
                   <td style={{ padding: '0.5rem 1rem', color: '#374151', fontWeight: 500 }}>
                     {ep.item_name}
                     <span style={{ marginLeft: 6, background: '#eff6ff', color: '#1e40af', fontSize: '0.7rem', fontWeight: 600, padding: '1px 6px', borderRadius: 10 }}>
@@ -218,14 +218,14 @@ const BillDetailPage: React.FC = () => {
       {/* Caretaker out-of-pocket expenses (not on guest bill) */}
       {caretakerExpenses.length > 0 && (
         <div style={sectionCard}>
-          <div style={{ padding: '0.6rem 1rem', background: '#f9fafb', borderBottom: '1px solid #e5e7eb', fontSize: '0.82rem', fontWeight: 600, color: '#374151' }}>
+          <div style={{ padding: '0.6rem 1rem', background: '#f0ece3', borderBottom: '1px solid #e5e7eb', fontSize: '0.82rem', fontWeight: 600, color: '#374151' }}>
             Caretaker Out-of-Pocket Expenses
             <span style={{ marginLeft: 8, fontSize: '0.72rem', fontWeight: 400, color: '#6b7280' }}>reimbursable to caretaker</span>
           </div>
           <table style={{ width: '100%' }}>
             <tbody>
               {caretakerExpenses.map(ep => (
-                <tr key={ep.id} style={{ borderBottom: '1px solid #f9fafb' }}>
+                <tr key={ep.id} style={{ borderBottom: '1px solid #f0ece3' }}>
                   <td style={{ padding: '0.5rem 1rem', color: '#374151', fontWeight: 500, fontSize: '0.875rem' }}>
                     {ep.item_name}
                     <div style={{ fontSize: '0.75rem', color: '#9ca3af', marginTop: 1 }}>{ep.vendor_name}</div>
@@ -239,7 +239,7 @@ const BillDetailPage: React.FC = () => {
                       <span style={{ background: '#fef3c7', color: '#92400e', fontSize: '0.73rem', fontWeight: 600, padding: '2px 7px', borderRadius: 10 }}>Pending</span>
                     )}
                     {ep.reimbursement_proof_url && (
-                      <a href={ep.reimbursement_proof_url} target="_blank" rel="noreferrer" style={{ marginLeft: 6, fontSize: '0.72rem', color: '#f16524' }}>proof</a>
+                      <a href={ep.reimbursement_proof_url} target="_blank" rel="noreferrer" style={{ marginLeft: 6, fontSize: '0.72rem', color: '#1a3c2c' }}>proof</a>
                     )}
                   </td>
                   <td style={{ padding: '0.5rem 1rem' }}>
@@ -289,7 +289,7 @@ const BillDetailPage: React.FC = () => {
           </div>
         )}
         <div style={{ display: 'flex', justifyContent: 'space-between', fontWeight: 700, fontSize: '1.1rem', borderTop: '1px solid #e5e7eb', paddingTop: '0.6rem', marginTop: '0.4rem' }}>
-          <span>Total</span><span style={{ color: '#f16524' }}>₹{grandTotal.toFixed(2)}</span>
+          <span>Total</span><span style={{ color: '#1a3c2c' }}>₹{grandTotal.toFixed(2)}</span>
         </div>
       </div>
 
@@ -325,7 +325,7 @@ const BillDetailPage: React.FC = () => {
           <button
             onClick={handleUploadCatererProof}
             disabled={uploadingCatererProof}
-            style={{ background: uploadingCatererProof ? '#e5e7eb' : '#f16524', color: uploadingCatererProof ? '#9ca3af' : '#fff', border: 'none', borderRadius: 7, padding: '0.55rem 1.25rem', cursor: uploadingCatererProof ? 'not-allowed' : 'pointer', fontWeight: 600, fontSize: '0.875rem', minHeight: 40 }}
+            style={{ background: uploadingCatererProof ? '#e5e7eb' : '#1a3c2c', color: uploadingCatererProof ? '#9ca3af' : '#fff', border: 'none', borderRadius: 7, padding: '0.55rem 1.25rem', cursor: uploadingCatererProof ? 'not-allowed' : 'pointer', fontWeight: 600, fontSize: '0.875rem', minHeight: 40 }}
           >
             {uploadingCatererProof ? 'Uploading…' : 'Upload Proof'}
           </button>

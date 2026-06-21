@@ -66,7 +66,7 @@ const sectionHeaderStyle: React.CSSProperties = {
   textTransform: 'uppercase',
   letterSpacing: '0.05em',
   padding: '0.6rem 1rem',
-  background: '#f9fafb',
+  background: '#f0ece3',
   borderBottom: '1px solid #e5e7eb',
 };
 
@@ -206,7 +206,7 @@ const ResolveOrderPage: React.FC = () => {
         </div>
         <button
           onClick={() => navigate('/caretaker/orders')}
-          style={{ background: 'none', border: 'none', color: '#f16524', cursor: 'pointer', fontSize: '0.875rem' }}
+          style={{ background: 'none', border: 'none', color: '#1a3c2c', cursor: 'pointer', fontSize: '0.875rem' }}
         >
           ← Back
         </button>
@@ -258,12 +258,12 @@ const ResolveOrderPage: React.FC = () => {
                   <div style={{ display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
                     <button
                       onClick={() => updateQty(idx, item.quantity - 1)}
-                      style={{ width: 28, height: 28, border: '1px solid #d1d5db', borderRadius: 6, cursor: 'pointer', background: '#f9fafb', fontSize: '1rem', color: '#374151' }}
+                      style={{ width: 28, height: 28, border: '1px solid #d1d5db', borderRadius: 6, cursor: 'pointer', background: '#f0ece3', fontSize: '1rem', color: '#374151' }}
                     >−</button>
                     <span style={{ minWidth: 22, textAlign: 'center', fontWeight: 600, color: '#111827', fontSize: '0.9rem' }}>{item.quantity}</span>
                     <button
                       onClick={() => updateQty(idx, item.quantity + 1)}
-                      style={{ width: 28, height: 28, border: '1px solid #d1d5db', borderRadius: 6, cursor: 'pointer', background: '#f9fafb', fontSize: '1rem', color: '#374151' }}
+                      style={{ width: 28, height: 28, border: '1px solid #d1d5db', borderRadius: 6, cursor: 'pointer', background: '#f0ece3', fontSize: '1rem', color: '#374151' }}
                     >+</button>
                   </div>
 
@@ -370,7 +370,7 @@ const ResolveOrderPage: React.FC = () => {
 
                 {/* Who paid */}
                 <div style={{ display: 'flex', gap: '0.6rem' }}>
-                  <label style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', cursor: 'pointer', padding: '0.5rem 0.75rem', borderRadius: 7, border: `1px solid ${!purchase.is_paid_by_caretaker ? '#f16524' : '#e5e7eb'}`, background: !purchase.is_paid_by_caretaker ? '#fff7f4' : '#fff', flex: 1 }}>
+                  <label style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', cursor: 'pointer', padding: '0.5rem 0.75rem', borderRadius: 7, border: `1px solid ${!purchase.is_paid_by_caretaker ? '#1a3c2c' : '#e5e7eb'}`, background: !purchase.is_paid_by_caretaker ? '#e6efe9' : '#fff', flex: 1 }}>
                     <input
                       type="radio"
                       name={`paid-${purchase.key}`}
@@ -382,7 +382,7 @@ const ResolveOrderPage: React.FC = () => {
                       <div style={{ fontSize: '0.73rem', color: '#6b7280' }}>Added to bill</div>
                     </div>
                   </label>
-                  <label style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', cursor: 'pointer', padding: '0.5rem 0.75rem', borderRadius: 7, border: `1px solid ${purchase.is_paid_by_caretaker ? '#f16524' : '#e5e7eb'}`, background: purchase.is_paid_by_caretaker ? '#fff7f4' : '#fff', flex: 1 }}>
+                  <label style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', cursor: 'pointer', padding: '0.5rem 0.75rem', borderRadius: 7, border: `1px solid ${purchase.is_paid_by_caretaker ? '#1a3c2c' : '#e5e7eb'}`, background: purchase.is_paid_by_caretaker ? '#e6efe9' : '#fff', flex: 1 }}>
                     <input
                       type="radio"
                       name={`paid-${purchase.key}`}
@@ -420,7 +420,7 @@ const ResolveOrderPage: React.FC = () => {
         onClick={handleSave}
         disabled={saving || items.length === 0}
         style={{
-          background: saving || items.length === 0 ? '#e5e7eb' : '#f16524',
+          background: saving || items.length === 0 ? '#e5e7eb' : '#1a3c2c',
           color: saving || items.length === 0 ? '#9ca3af' : '#fff',
           border: 'none',
           borderRadius: 8,

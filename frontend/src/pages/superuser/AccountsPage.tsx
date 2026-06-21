@@ -105,7 +105,7 @@ const AccountsPage: React.FC = () => {
         </div>
         <button
           onClick={() => { setShowCreate(v => !v); setCreateError(''); }}
-          style={{ display: 'flex', alignItems: 'center', gap: 6, background: '#f16524', color: '#fff', border: 'none', borderRadius: 7, padding: '0.45rem 0.9rem', cursor: 'pointer', fontWeight: 600, fontSize: '0.875rem', minHeight: 38 }}
+          style={{ display: 'flex', alignItems: 'center', gap: 6, background: '#1a3c2c', color: '#fff', border: 'none', borderRadius: 7, padding: '0.45rem 0.9rem', cursor: 'pointer', fontWeight: 600, fontSize: '0.875rem', minHeight: 38 }}
         >
           <UserPlus size={15} />
           {showCreate ? 'Cancel' : 'Create Account'}
@@ -149,7 +149,7 @@ const AccountsPage: React.FC = () => {
             </div>
           </div>
           {createError && <p style={{ color: '#dc2626', fontSize: '0.82rem', marginBottom: '0.75rem' }}>{createError}</p>}
-          <button type="submit" disabled={creating} style={{ background: creating ? '#fdba8c' : '#f16524', color: '#fff', border: 'none', borderRadius: 7, padding: '0.45rem 1.1rem', cursor: creating ? 'not-allowed' : 'pointer', fontWeight: 600, fontSize: '0.875rem', minHeight: 38 }}>
+          <button type="submit" disabled={creating} style={{ background: creating ? '#7aab8e' : '#1a3c2c', color: '#fff', border: 'none', borderRadius: 7, padding: '0.45rem 1.1rem', cursor: creating ? 'not-allowed' : 'pointer', fontWeight: 600, fontSize: '0.875rem', minHeight: 38 }}>
             {creating ? 'Creating…' : 'Create Account'}
           </button>
         </form>
@@ -167,7 +167,7 @@ const AccountsPage: React.FC = () => {
             <div style={{ background: '#fff', border: '1px solid #e5e7eb', borderRadius: 10, overflow: 'hidden', boxShadow: '0 1px 3px rgba(0,0,0,0.04)' }}>
               <table style={{ width: '100%', borderCollapse: 'collapse' }}>
                 <thead>
-                  <tr style={{ background: '#f9fafb', borderBottom: '1px solid #e5e7eb' }}>
+                  <tr style={{ background: '#f0ece3', borderBottom: '1px solid #e5e7eb' }}>
                     {['Username', 'Name', 'Email', 'Phone', 'Actions'].map(h => (
                       <th key={h} style={{ padding: '0.55rem 1rem', textAlign: 'left', fontSize: '0.72rem', fontWeight: 600, color: '#6b7280', textTransform: 'uppercase', letterSpacing: '0.04em' }}>{h}</th>
                     ))}
@@ -216,7 +216,7 @@ const AccountsPage: React.FC = () => {
                               />
                               <button
                                 onClick={() => handleResetPassword(user.id)}
-                                style={{ background: '#f16524', color: '#fff', border: 'none', borderRadius: 7, padding: '0.4rem 0.85rem', cursor: 'pointer', fontWeight: 600, fontSize: '0.82rem', minHeight: 34 }}
+                                style={{ background: '#1a3c2c', color: '#fff', border: 'none', borderRadius: 7, padding: '0.4rem 0.85rem', cursor: 'pointer', fontWeight: 600, fontSize: '0.82rem', minHeight: 34 }}
                               >
                                 Set Password
                               </button>
