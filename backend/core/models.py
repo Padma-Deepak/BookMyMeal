@@ -98,6 +98,19 @@ class Order(models.Model):
     def __str__(self):
         return f"Order {str(self.id)[:8]} by {self.guest.username} [{self.status}]"
 
+    @property
+    def is_editable(self):
+        """Guest can still edit/cancel: status is still 'pending' AND no item's
+        notice_period_minutes exceeds the minutes remaining until midnight."""
+        if self.status != 'pending':
+            return False
+        from django.utils import timezone
+        now = timezone.localtime()
+        minutes_until_midnight = (23 - now.hour) * 60 + (59 - now.minute)
+        return not self.items.filter(
+            menu_item__notice_period_minutes__gt=minutes_until_midnight
+        ).exists()
+
 
 class OrderItem(models.Model):
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
@@ -141,6 +154,10 @@ class ExternalPurchase(models.Model):
     caretaker = models.ForeignKey(
         User, on_delete=models.SET_NULL, null=True, blank=True,
         related_name='logged_purchases'
+    )
+    bill = models.ForeignKey(
+        'Bill', on_delete=models.SET_NULL, null=True, blank=True,
+        related_name='purchases'
     )
     vendor = models.ForeignKey(
         Vendor, on_delete=models.SET_NULL, null=True, blank=True,

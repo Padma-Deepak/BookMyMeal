@@ -8,6 +8,7 @@ const PreparationPage: React.FC = () => {
   const [checkedItems, setCheckedItems] = useState<Record<string, Set<number>>>({});
   const [loading, setLoading] = useState(true);
   const [completing, setCompleting] = useState<string | null>(null);
+  const [confirmingCompleteId, setConfirmingCompleteId] = useState<string | null>(null);
 
   const fetchOrders = () => {
     Promise.all([
@@ -34,8 +35,9 @@ const PreparationPage: React.FC = () => {
 
   const handleComplete = async (id: string) => {
     setCompleting(id);
-    await apiPatch(`/orders/${id}/`, { status: 'delivered' });
+    await apiPatch(`/orders/${id}/`, { status: 'prepared' });
     setCompleting(null);
+    setConfirmingCompleteId(null);
     fetchOrders();
   };
 
@@ -123,28 +125,60 @@ const PreparationPage: React.FC = () => {
                 </p>
               )}
 
-              <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
-                <button
-                  onClick={() => handleComplete(order.id)}
-                  disabled={!allDone || completing === order.id}
-                  style={{
-                    background: allDone ? '#16a34a' : '#e5e7eb',
-                    color: allDone ? '#fff' : '#9ca3af',
-                    border: 'none',
-                    borderRadius: 7,
-                    padding: '0.5rem 1.375rem',
-                    cursor: allDone ? 'pointer' : 'not-allowed',
-                    fontWeight: 600,
-                    fontSize: '0.875rem',
-                    minHeight: 40,
-                  }}
-                >
-                  {completing === order.id ? 'Completing…' : 'Complete Order'}
-                </button>
-                {!allDone && (
-                  <span style={{ fontSize: '0.8rem', color: '#9ca3af' }}>
-                    Check all {items.length} items first
-                  </span>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', flexWrap: 'wrap' }}>
+                {confirmingCompleteId === order.id ? (
+                  <>
+                    <span style={{ fontSize: '0.82rem', color: '#374151', fontWeight: 500 }}>Confirm this order is complete?</span>
+                    <button
+                      onClick={() => handleComplete(order.id)}
+                      disabled={completing === order.id}
+                      style={{
+                        background: completing === order.id ? '#86efac' : '#16a34a',
+                        color: '#fff',
+                        border: 'none',
+                        borderRadius: 7,
+                        padding: '0.5rem 1.375rem',
+                        cursor: completing === order.id ? 'not-allowed' : 'pointer',
+                        fontWeight: 600,
+                        fontSize: '0.875rem',
+                        minHeight: 40,
+                      }}
+                    >
+                      {completing === order.id ? 'Completing…' : 'Yes, Confirm Complete'}
+                    </button>
+                    <button
+                      onClick={() => setConfirmingCompleteId(null)}
+                      disabled={completing === order.id}
+                      style={{ background: '#fff', border: '1px solid #e5e7eb', borderRadius: 7, padding: '0.5rem 0.875rem', cursor: 'pointer', fontSize: '0.875rem', minHeight: 40, color: '#374151' }}
+                    >
+                      Cancel
+                    </button>
+                  </>
+                ) : (
+                  <>
+                    <button
+                      onClick={() => setConfirmingCompleteId(order.id)}
+                      disabled={!allDone}
+                      style={{
+                        background: allDone ? '#16a34a' : '#e5e7eb',
+                        color: allDone ? '#fff' : '#9ca3af',
+                        border: 'none',
+                        borderRadius: 7,
+                        padding: '0.5rem 1.375rem',
+                        cursor: allDone ? 'pointer' : 'not-allowed',
+                        fontWeight: 600,
+                        fontSize: '0.875rem',
+                        minHeight: 40,
+                      }}
+                    >
+                      Complete Order
+                    </button>
+                    {!allDone && (
+                      <span style={{ fontSize: '0.8rem', color: '#9ca3af' }}>
+                        Check all {items.length} items first
+                      </span>
+                    )}
+                  </>
                 )}
               </div>
             </div>

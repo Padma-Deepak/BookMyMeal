@@ -1,33 +1,41 @@
 import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { ShoppingCart, Clock } from 'lucide-react';
+import { ShoppingCart, Clock, Sun, UtensilsCrossed, Moon, Cookie, CupSoda } from 'lucide-react';
 import Layout from '../../components/Layout';
 import { useCart } from '../../context/CartContext';
 import { apiGet } from '../../lib/api';
 import type { MenuItem } from '../../types';
 import { SPICY_LEVELS, CATEGORY_LABELS } from '../../types';
+import { isWithinNoticePeriod, formatNotice } from '../../lib/notice';
 
-function isWithinNoticePeriod(noticePeriodMinutes: number): boolean {
-  if (noticePeriodMinutes === 0) return false;
-  const now = new Date();
-  const minutesUntilMidnight = (23 - now.getHours()) * 60 + (59 - now.getMinutes());
-  return noticePeriodMinutes > minutesUntilMidnight;
-}
+const BRAND = '#1a3c2c';
+const BRAND_DARK = '#122e21';
 
-function formatNotice(minutes: number): string {
-  if (minutes < 60) return `${minutes} min`;
-  const h = Math.floor(minutes / 60);
-  const m = minutes % 60;
-  return m > 0 ? `${h}h ${m}min` : `${h}h`;
+function slugify(name: string): string {
+  return name
+    .trim()
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/(^-|-$)/g, '');
 }
 
 const CATEGORY_ORDER = ['breakfast', 'lunch', 'dinner', 'snacks', 'beverage'];
+
+const CATEGORY_META: Record<string, { icon: React.ElementType; gradient: string }> = {
+  breakfast: { icon: Sun, gradient: 'linear-gradient(135deg, #f2a35e 0%, #d9713c 100%)' },
+  lunch: { icon: UtensilsCrossed, gradient: 'linear-gradient(135deg, #3f8f66 0%, #1a3c2c 100%)' },
+  dinner: { icon: Moon, gradient: 'linear-gradient(135deg, #4b6357 0%, #16261e 100%)' },
+  snacks: { icon: Cookie, gradient: 'linear-gradient(135deg, #e9c46a 0%, #d1893f 100%)' },
+  beverage: { icon: CupSoda, gradient: 'linear-gradient(135deg, #7ba3c9 0%, #3d6d99 100%)' },
+};
+const DEFAULT_META = { icon: UtensilsCrossed, gradient: 'linear-gradient(135deg, #9ca88f 0%, #5c6b57 100%)' };
 
 const MenuPage: React.FC = () => {
   const [menuItems, setMenuItems] = useState<MenuItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [quantities, setQuantities] = useState<Record<string, number>>({});
   const [spicyLevels, setSpicyLevels] = useState<Record<string, string>>({});
+  const [brokenImages, setBrokenImages] = useState<Record<string, boolean>>({});
   const { addItem, updateItem, removeItem, items: cartItems } = useCart();
   const navigate = useNavigate();
 
@@ -88,32 +96,103 @@ const MenuPage: React.FC = () => {
     }
   };
 
-  if (loading) return <Layout><p style={{ color: '#6b7280' }}>Loading menu…</p></Layout>;
+  if (loading) {
+    return (
+      <Layout>
+        <p style={{ color: '#9ca3af', padding: '3rem 0', textAlign: 'center' }}>Loading menu…</p>
+      </Layout>
+    );
+  }
 
   return (
     <Layout>
-      {/* Header */}
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>
+      <style>{`
+        .bmm-grid {
+          display: grid;
+          grid-template-columns: repeat(3, 1fr);
+          gap: 1.75rem;
+        }
+        @media (max-width: 900px) {
+          .bmm-grid { grid-template-columns: repeat(2, 1fr); }
+        }
+        @media (max-width: 600px) {
+          .bmm-grid { grid-template-columns: 1fr; }
+        }
+        .bmm-card {
+          transition: transform 0.28s ease, box-shadow 0.28s ease;
+        }
+        .bmm-card:hover {
+          transform: translateY(-6px);
+          box-shadow: 0 24px 48px -20px rgba(26,60,44,0.25), 0 6px 16px -8px rgba(0,0,0,0.08);
+        }
+        .bmm-card-media {
+          transition: transform 0.6s cubic-bezier(0.25, 0.8, 0.25, 1);
+        }
+        .bmm-card:hover .bmm-card-media {
+          transform: scale(1.045);
+        }
+        .bmm-add-btn {
+          transition: background 0.2s ease, transform 0.15s ease;
+        }
+        .bmm-add-btn:hover:not(:disabled) {
+          background: ${BRAND_DARK};
+        }
+        .bmm-add-btn:active:not(:disabled) {
+          transform: scale(0.98);
+        }
+        .bmm-qty-btn {
+          transition: background 0.15s ease, transform 0.1s ease;
+        }
+        .bmm-qty-btn:hover {
+          background: #f0ece3;
+        }
+        .bmm-qty-btn:active {
+          transform: scale(0.94);
+        }
+        .bmm-order-btn {
+          transition: background 0.2s ease, transform 0.15s ease;
+        }
+        .bmm-order-btn:hover {
+          background: ${BRAND_DARK};
+        }
+      `}</style>
+
+      {/* Page header */}
+      <div style={{
+        display: 'flex',
+        justifyContent: 'space-between',
+        alignItems: 'flex-end',
+        gap: '1.5rem',
+        flexWrap: 'wrap',
+        marginBottom: '3rem',
+        paddingTop: '0.5rem',
+      }}>
         <div>
-          <h1 style={{ fontSize: '1.25rem', fontWeight: 700 }}>Menu</h1>
-          <p style={{ color: '#6b7280', fontSize: '0.875rem', marginTop: 2 }}>Browse and order from today's menu</p>
+          <h1 style={{ fontSize: '2.5rem', fontWeight: 600, color: BRAND, letterSpacing: '-0.02em' }}>
+            Today's Menu
+          </h1>
+          <p style={{ color: '#6b7280', fontSize: '1rem', marginTop: '0.5rem', maxWidth: 440 }}>
+            Fresh meals, thoughtfully prepared for you. Browse by category and order ahead.
+          </p>
         </div>
         <button
+          className="bmm-order-btn"
           onClick={() => navigate('/guest/order/summary')}
           style={{
             display: 'flex',
             alignItems: 'center',
-            gap: '0.4rem',
-            background: '#1a3c2c',
+            gap: '0.5rem',
+            background: BRAND,
             color: '#fff',
             border: 'none',
-            borderRadius: 8,
-            padding: '0.55rem 1rem',
+            borderRadius: 999,
+            padding: '0.7rem 1.375rem',
             cursor: 'pointer',
             fontWeight: 600,
-            fontSize: '0.875rem',
-            minHeight: 40,
+            fontSize: '0.9rem',
+            minHeight: 44,
             position: 'relative',
+            flexShrink: 0,
           }}
         >
           <ShoppingCart size={16} />
@@ -121,7 +200,7 @@ const MenuPage: React.FC = () => {
           {totalCartQty > 0 && (
             <span style={{
               background: '#fff',
-              color: '#1a3c2c',
+              color: BRAND,
               borderRadius: '50%',
               width: 20,
               height: 20,
@@ -138,148 +217,208 @@ const MenuPage: React.FC = () => {
       </div>
 
       {orderedCategories.length === 0 && (
-        <div style={{ textAlign: 'center', padding: '3rem', color: '#6b7280' }}>
+        <div style={{ textAlign: 'center', padding: '4rem 0', color: '#9ca3af' }}>
           <p style={{ fontWeight: 500 }}>No items available right now.</p>
         </div>
       )}
 
-      {orderedCategories.map(category => (
-        <section key={category} style={{ marginBottom: '2rem' }}>
-          <h2 style={{ fontSize: '0.8rem', fontWeight: 600, color: '#6b7280', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: '0.875rem', paddingBottom: '0.5rem', borderBottom: '1px solid #e5e7eb' }}>
-            {CATEGORY_LABELS[category] ?? category}
-          </h2>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '0.625rem' }}>
-            {grouped[category].map(item => {
-              const blocked = isWithinNoticePeriod(item.notice_period_minutes);
-              const cartItem = cartItems.find(i => i.menu_item_id === item.id);
-              const isInCart = !!cartItem;
-              // When in cart: show cart quantity. When not: show local pending quantity.
-              const displayQty = isInCart ? cartItem.quantity : (quantities[item.id] || 1);
+      {orderedCategories.map((category, catIdx) => {
+        const meta = CATEGORY_META[category] ?? DEFAULT_META;
 
-              return (
-                <div
-                  key={item.id}
-                  style={{
-                    background: '#fff',
-                    border: '1px solid #e5e7eb',
-                    borderRadius: 10,
-                    padding: '1rem 1.125rem',
-                    opacity: blocked ? 0.6 : 1,
-                    boxShadow: '0 1px 2px rgba(0,0,0,0.04)',
-                  }}
-                >
-                  {/* Item header */}
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '1rem' }}>
-                    <div style={{ flex: 1 }}>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap' }}>
-                        <span style={{ fontWeight: 600, color: '#111827' }}>{item.name}</span>
-                        {item.is_complimentary && (
-                          <span style={{ background: '#ecfdf5', color: '#065f46', fontSize: '0.7rem', fontWeight: 600, padding: '1px 6px', borderRadius: 10 }}>
-                            Complimentary
-                          </span>
-                        )}
-                      </div>
-                      {item.description && (
-                        <p style={{ color: '#6b7280', fontSize: '0.82rem', marginTop: 3 }}>{item.description}</p>
-                      )}
-                      {item.notice_period_minutes > 0 && (
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.3rem', marginTop: '0.4rem', fontSize: '0.78rem', color: blocked ? '#dc2626' : '#d97706' }}>
-                          <Clock size={12} />
-                          Order {formatNotice(item.notice_period_minutes)} in advance
-                          {blocked && <strong> · Cannot order now</strong>}
+        return (
+          <section key={category} style={{ marginBottom: catIdx === orderedCategories.length - 1 ? 0 : '3.5rem' }}>
+            <div style={{
+              display: 'flex',
+              alignItems: 'baseline',
+              gap: '0.875rem',
+              marginBottom: '1.75rem',
+              paddingBottom: '0.875rem',
+              borderBottom: '1px solid #e5e0d3',
+            }}>
+              <h2 style={{ fontSize: '1.75rem', fontWeight: 600, color: '#111827' }}>
+                {CATEGORY_LABELS[category] ?? category}
+              </h2>
+              <span style={{ fontSize: '0.8rem', color: '#9ca3af', fontWeight: 500 }}>
+                {grouped[category].length} {grouped[category].length === 1 ? 'item' : 'items'}
+              </span>
+            </div>
+
+            <div className="bmm-grid">
+              {grouped[category].map(item => {
+                const blocked = isWithinNoticePeriod(item.notice_period_minutes);
+                const cartItem = cartItems.find(i => i.menu_item_id === item.id);
+                const isInCart = !!cartItem;
+                const displayQty = isInCart ? cartItem.quantity : (quantities[item.id] || 1);
+                const imgSrc = `/food-images/${slugify(item.name)}.jpeg`;
+                const hasPhoto = !brokenImages[item.id];
+                const Icon = meta.icon;
+
+                return (
+                  <div
+                    key={item.id}
+                    className="bmm-card"
+                    style={{
+                      background: '#fff',
+                      borderRadius: 20,
+                      overflow: 'hidden',
+                      boxShadow: '0 1px 3px rgba(0,0,0,0.05), 0 1px 2px rgba(0,0,0,0.04)',
+                      opacity: blocked ? 0.55 : 1,
+                      display: 'flex',
+                      flexDirection: 'column',
+                      height: '100%',
+                    }}
+                  >
+                    {/* Image / media area */}
+                    <div style={{ position: 'relative', aspectRatio: '4 / 3', overflow: 'hidden', background: meta.gradient }}>
+                      {hasPhoto ? (
+                        <img
+                          src={imgSrc}
+                          alt={item.name}
+                          className="bmm-card-media"
+                          onError={() => setBrokenImages(b => ({ ...b, [item.id]: true }))}
+                          style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }}
+                        />
+                      ) : (
+                        <div className="bmm-card-media" style={{
+                          position: 'absolute', inset: 0,
+                          display: 'flex', alignItems: 'center', justifyContent: 'center',
+                        }}>
+                          <Icon size={56} color="rgba(255,255,255,0.85)" strokeWidth={1.5} />
                         </div>
                       )}
-                    </div>
-                    <div style={{ textAlign: 'right', flexShrink: 0 }}>
-                      <span style={{ fontWeight: 700, fontSize: '1rem', color: item.is_complimentary ? '#16a34a' : '#111827' }}>
-                        {item.is_complimentary ? '₹0' : `₹${item.customer_price}`}
-                      </span>
-                    </div>
-                  </div>
 
-                  {/* Controls */}
-                  {!blocked && (
-                    <div style={{ display: 'flex', gap: '0.75rem', alignItems: 'center', marginTop: '0.875rem', flexWrap: 'wrap' }}>
-                      {/* Qty stepper — synced with cart when item is in cart */}
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '0.3rem', background: '#f0ece3', borderRadius: 7, padding: '0.2rem', border: '1px solid #e5e7eb' }}>
-                        <button
-                          onClick={() => handleDecrement(item.id)}
-                          style={{ width: 30, height: 30, borderRadius: 5, border: 'none', cursor: 'pointer', background: '#fff', color: '#374151', fontWeight: 600, fontSize: '1rem', boxShadow: '0 1px 2px rgba(0,0,0,0.06)' }}
-                        >
-                          −
-                        </button>
-                        <span style={{ minWidth: 28, textAlign: 'center', fontWeight: 600, color: '#111827' }}>
-                          {displayQty}
+                      {item.is_complimentary && (
+                        <span style={{
+                          position: 'absolute', top: 12, left: 12,
+                          background: 'rgba(255,255,255,0.92)', color: '#065f46',
+                          fontSize: '0.7rem', fontWeight: 600, padding: '3px 10px', borderRadius: 999,
+                          backdropFilter: 'blur(2px)',
+                        }}>
+                          Complimentary
                         </span>
-                        <button
-                          onClick={() => handleIncrement(item.id)}
-                          style={{ width: 30, height: 30, borderRadius: 5, border: 'none', cursor: 'pointer', background: '#fff', color: '#374151', fontWeight: 600, fontSize: '1rem', boxShadow: '0 1px 2px rgba(0,0,0,0.06)' }}
-                        >
-                          +
-                        </button>
+                      )}
+
+                      {item.notice_period_minutes > 0 && (
+                        <span style={{
+                          position: 'absolute', top: 12, right: 12,
+                          display: 'flex', alignItems: 'center', gap: '0.3rem',
+                          background: blocked ? 'rgba(220,38,38,0.92)' : 'rgba(255,255,255,0.92)',
+                          color: blocked ? '#fff' : '#374151',
+                          fontSize: '0.7rem', fontWeight: 600, padding: '3px 10px', borderRadius: 999,
+                        }}>
+                          <Clock size={11} />
+                          {blocked ? 'Unavailable now' : formatNotice(item.notice_period_minutes)}
+                        </span>
+                      )}
+                    </div>
+
+                    {/* Content */}
+                    <div style={{ padding: '1.25rem 1.375rem 1.5rem', display: 'flex', flexDirection: 'column', gap: '0.5rem', flex: 1 }}>
+                      <h3 style={{ fontSize: '1.15rem', fontWeight: 600, color: '#111827' }}>
+                        {item.name}
+                      </h3>
+
+                      {item.description && (
+                        <p style={{
+                          color: '#6b7280', fontSize: '0.85rem', lineHeight: 1.5,
+                          display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden',
+                        }}>
+                          {item.description}
+                        </p>
+                      )}
+
+                      <div style={{ flex: 1 }} />
+
+                      <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', marginTop: '0.25rem' }}>
+                        <span style={{ fontWeight: 700, fontSize: '1.15rem', color: item.is_complimentary ? '#16a34a' : BRAND }}>
+                          {item.is_complimentary ? '₹0' : `₹${item.customer_price}`}
+                        </span>
                       </div>
 
-                      {/* Spicy dropdown — hidden when item is already in cart */}
-                      {!isInCart && (
-                        <select
-                          value={spicyLevels[item.id] || 'None'}
-                          onChange={e => setSpicyLevels(s => ({ ...s, [item.id]: e.target.value }))}
-                          style={{ padding: '0.35rem 0.55rem', borderRadius: 6, border: '1px solid #e5e7eb', background: '#f0ece3', fontSize: '0.82rem', color: '#374151' }}
-                        >
-                          {SPICY_LEVELS.map(l => <option key={l}>{l}</option>)}
-                        </select>
-                      )}
-
-                      {/* Add / Added button */}
-                      {isInCart ? (
-                        <button
-                          disabled
-                          style={{
-                            background: '#16a34a',
-                            color: '#fff',
-                            border: 'none',
-                            borderRadius: 7,
-                            padding: '0.4rem 0.875rem',
-                            cursor: 'default',
-                            fontWeight: 600,
-                            fontSize: '0.85rem',
-                            minHeight: 36,
-                          }}
-                        >
-                          ✓ Added
-                        </button>
+                      {blocked ? (
+                        <p style={{ color: '#dc2626', fontSize: '0.8rem', marginTop: '0.25rem' }}>
+                          Advance notice required — cannot order at this time.
+                        </p>
                       ) : (
-                        <button
-                          onClick={() => handleAddToCart(item)}
-                          style={{
-                            background: '#1a3c2c',
-                            color: '#fff',
-                            border: 'none',
-                            borderRadius: 7,
-                            padding: '0.4rem 0.875rem',
-                            cursor: 'pointer',
-                            fontWeight: 600,
-                            fontSize: '0.85rem',
-                            minHeight: 36,
-                          }}
-                        >
-                          Add to Order
-                        </button>
+                        <>
+                          <div style={{ display: 'flex', gap: '0.6rem', alignItems: 'center', marginTop: '0.5rem' }}>
+                            {/* Qty stepper */}
+                            <div style={{
+                              display: 'flex', alignItems: 'center', gap: '0.2rem',
+                              background: '#f9f8f4', borderRadius: 999, padding: '0.2rem',
+                              border: '1px solid #ede9de', height: 38,
+                            }}>
+                              <button
+                                className="bmm-qty-btn"
+                                onClick={() => handleDecrement(item.id)}
+                                style={{ width: 30, height: 30, borderRadius: '50%', border: 'none', cursor: 'pointer', background: 'transparent', color: '#374151', fontWeight: 600, fontSize: '1rem' }}
+                              >
+                                −
+                              </button>
+                              <span style={{ minWidth: 22, textAlign: 'center', fontWeight: 600, color: '#111827', fontSize: '0.9rem' }}>
+                                {displayQty}
+                              </span>
+                              <button
+                                className="bmm-qty-btn"
+                                onClick={() => handleIncrement(item.id)}
+                                style={{ width: 30, height: 30, borderRadius: '50%', border: 'none', cursor: 'pointer', background: 'transparent', color: '#374151', fontWeight: 600, fontSize: '1rem' }}
+                              >
+                                +
+                              </button>
+                            </div>
+
+                            {/* Spicy level dropdown — hidden once item is in cart */}
+                            {!isInCart && (
+                              <select
+                                value={spicyLevels[item.id] || 'None'}
+                                onChange={e => setSpicyLevels(s => ({ ...s, [item.id]: e.target.value }))}
+                                style={{
+                                  flex: 1, minWidth: 0, height: 38,
+                                  padding: '0 0.6rem', borderRadius: 999,
+                                  border: '1px solid #ede9de', background: '#f9f8f4',
+                                  fontSize: '0.8rem', color: '#374151',
+                                }}
+                              >
+                                {SPICY_LEVELS.map(l => <option key={l}>{l}</option>)}
+                              </select>
+                            )}
+                          </div>
+
+                          {isInCart ? (
+                            <button
+                              disabled
+                              className="bmm-add-btn"
+                              style={{
+                                background: '#16a34a', color: '#fff', border: 'none',
+                                borderRadius: 999, padding: '0.65rem', cursor: 'default',
+                                fontWeight: 600, fontSize: '0.85rem', minHeight: 42, marginTop: '0.4rem',
+                              }}
+                            >
+                              ✓ Added to order
+                            </button>
+                          ) : (
+                            <button
+                              onClick={() => handleAddToCart(item)}
+                              className="bmm-add-btn"
+                              style={{
+                                background: BRAND, color: '#fff', border: 'none',
+                                borderRadius: 999, padding: '0.65rem', cursor: 'pointer',
+                                fontWeight: 600, fontSize: '0.85rem', minHeight: 42, marginTop: '0.4rem',
+                              }}
+                            >
+                              Add to Order
+                            </button>
+                          )}
+                        </>
                       )}
                     </div>
-                  )}
-
-                  {blocked && (
-                    <p style={{ marginTop: '0.5rem', color: '#dc2626', fontSize: '0.82rem' }}>
-                      Advance notice required — cannot order at this time.
-                    </p>
-                  )}
-                </div>
-              );
-            })}
-          </div>
-        </section>
-      ))}
+                  </div>
+                );
+              })}
+            </div>
+          </section>
+        );
+      })}
     </Layout>
   );
 };

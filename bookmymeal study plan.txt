@@ -1,0 +1,362 @@
+
+  # One-Week Beginner Plan To Understand BookMyMeal
+
+  ## Summary
+
+  Goal: in 7 days, spend 2-3 hours/day learning how this app is built end-to-end so you can explain it in beginner-friendly
+  interview terms.
+
+  Default routine each day:
+
+  - 20 min: read concepts.
+  - 60-90 min: inspect actual files.
+  - 30-45 min: trace one workflow.
+  - 20-30 min: write your own simple explanation.
+  - 15 min: answer practice questions out loud.
+
+  Do not try to memorize every line. Focus on: what each layer does, how data moves, and how users trigger backend/database
+  changes.
+
+  ## Day 1: Big Picture And Project Structure
+
+  Learn:
+
+  - What a full-stack app is.
+  - Difference between frontend, backend, database, API, auth, routes, models.
+  - What BookMyMeal does and which roles exist: Guest, Caterer, Caretaker, Manager, Superuser.
+
+  Read:
+
+  - BookMyMeal_PRD_v1_2.md
+  - frontend/package.json
+  - frontend/vite.config.ts
+  - backend/bookmymeal/settings.py
+
+  Trace:
+
+  - Browser URL enters React app.
+  - React calls /api/....
+  - Vite proxies /api to Django.
+  - Django uses SQLite and Django REST Framework.
+
+  Write this explanation:
+
+  - “BookMyMeal is a full-stack meal ordering app. The frontend is React, the backend is Django REST, authentication uses JWT, and
+    the database is SQLite in development.”
+
+  Practice questions:
+
+  - What problem does this app solve?
+  - What are the main user roles?
+  - What is the difference between frontend and backend?
+  - Why does the frontend call APIs instead of touching the database directly?
+
+  ## Day 2: Frontend Basics And Routing
+
+  Learn:
+
+  - React components.
+  - Pages vs shared components.
+  - Routing with React Router.
+  - Protected routes and role-based navigation.
+
+  Read:
+
+  - frontend/src/main.tsx
+  - frontend/src/App.tsx
+  - frontend/src/components/ProtectedRoute.tsx
+  - frontend/src/components/Layout.tsx
+  - frontend/src/types.ts
+
+  Trace:
+
+  - /login
+  - /
+  - /caterer/orders
+  - /guest/menu
+  - /manager/dashboard
+
+  Understand:
+
+  - App.tsx decides which page renders for each route.
+  - ProtectedRoute blocks users with the wrong role.
+  - Layout renders the top navigation and notification badge.
+  - types.ts defines frontend data shapes like User, Order, MenuItem, Bill.
+
+  Write this explanation:
+
+  - “React Router maps URLs to pages. ProtectedRoute checks the logged-in user’s role before showing a page.”
+
+  Practice questions:
+
+  - What is a React component?
+  - What is a route?
+  - How does the app stop a guest from opening caterer pages?
+  - Where are frontend data types defined?
+
+  ## Day 3: Authentication And API Calls
+
+  Learn:
+
+  - Login flow.
+  - JWT access and refresh tokens.
+  - localStorage.
+  - API helper functions.
+
+  Read:
+
+  - frontend/src/pages/LoginPage.tsx
+  - frontend/src/context/AuthContext.tsx
+  - frontend/src/lib/api.ts
+  - backend/core/urls.py
+  - Auth-related classes in backend/core/views.py
+  - backend/core/serializers.py
+
+  Trace login:
+
+  Login form
+  → AuthContext.login()
+  → POST /api/token/
+  → backend validates user
+  → frontend stores access/refresh tokens
+  → GET /api/me/
+  → user role saved in React state
+  → redirect to role homepage
+
+  Understand:
+
+  - apiFetch automatically attaches Authorization: Bearer <token>.
+  - If a request gets 401, it tries /token/refresh/.
+  - /me/ returns the currently logged-in user.
+
+  Write this explanation:
+
+  - “JWT auth means the backend gives the frontend a token after login. The frontend sends that token with later API requests so
+    the backend knows who the user is.”
+
+  Practice questions:
+
+  - What happens when a user logs in?
+  - What is an access token?
+  - Why does the app call /me/ after login?
+  - Where are tokens stored?
+
+  ## Day 4: Backend Models And Database Relationships
+
+  Learn:
+
+  - Django models.
+  - Database tables.
+  - Foreign keys.
+  - Many-to-many relationships.
+  - Serializers.
+
+  Read:
+
+  - backend/core/models.py
+  - backend/core/serializers.py
+  - backend/core/admin.py
+  - backend/core/migrations/0001_initial.py only lightly, to see generated database structure.
+
+  Focus models:
+
+  - User
+  - MenuItem
+  - Order
+  - OrderItem
+  - ExternalPurchase
+  - Bill
+  - BillPayment
+  - Notification
+
+  Understand this relationship:
+
+  User(caterer)
+  → MenuItem
+  → OrderItem
+  → Order
+  → Bill
+
+  And:
+
+  User(guest)
+  → Order
+  → OrderItem
+  → MenuItem
+
+  Write this explanation:
+
+  - “The database stores users, menu items, orders, order items, bills, payments, and notifications. Orders do not directly belong
+    to caterers; caterer ownership is inferred through the menu items inside the order.”
+
+  Practice questions:
+
+  - What is a model?
+  - What is a foreign key?
+  - Why is OrderItem needed instead of storing items directly inside Order?
+  - How does the app know which orders belong to a caterer?
+
+  ## Day 5: Caterer Workflow End-To-End
+
+  Learn:
+
+  - How frontend actions become backend updates.
+  - How role-scoped queries work.
+  - How notifications are created.
+
+  Read:
+
+  - frontend/src/pages/caterer/OrdersPage.tsx
+  - frontend/src/pages/caterer/PreparationPage.tsx
+  - frontend/src/pages/caterer/MenuManagementPage.tsx
+  - Caterer-related parts of backend/core/views.py
+
+  Trace these flows:
+
+  Caterer views pending orders
+  → GET /api/orders/?status=pending
+  → backend filters orders by menu_item.caterer
+  → frontend renders order cards
+
+  Caterer approves order
+  → PATCH /api/orders/{id}/ { status: accepted }
+  → backend updates Order.status
+  → backend creates guest notification
+  → frontend refetches orders
+
+  Caterer rejects order
+  → PATCH /api/orders/{id}/ { status: rejected, rejection_reason, rejection_notes }
+  → backend updates Order
+  → backend notifies caretakers
+
+  Caterer updates menu item availability
+  → PATCH /api/menu-items/{id}/
+  → backend updates MenuItem
+  → guest menu hides unavailable items
+
+  Also notice current issues:
+
+  - /caterer/orders fetches only pending orders, so its accepted section is effectively unreachable.
+  - /caterer/payouts calls an endpoint that does not exist as a list endpoint.
+  - Notice period is enforced in guest UI, not backend.
+
+  Write this explanation:
+
+  - “The caterer workflow is mostly order status management and menu management. The backend protects caterer data by filtering
+    orders and menu items based on the logged-in caterer.”
+
+  Practice questions:
+
+  - How does a caterer approve an order?
+  - What happens when an order is rejected?
+  - What database fields change when availability is toggled?
+  - What is one bug or unfinished part of the caterer workflow?
+
+  ## Day 6: Guest, Manager, Caretaker Workflows
+
+  Learn:
+
+  - How different roles use the same backend models differently.
+  - How billing works.
+  - How rejected orders are handled.
+
+  Read:
+
+  - frontend/src/pages/guest/MenuPage.tsx
+  - frontend/src/pages/guest/OrderSummaryPage.tsx
+  - frontend/src/pages/manager/GenerateBillPage.tsx
+  - frontend/src/pages/manager/BillDetailPage.tsx
+  - frontend/src/pages/caretaker/RejectedOrdersPage.tsx
+  - frontend/src/pages/caretaker/ResolveOrderPage.tsx
+  - Billing and external purchase views in backend/core/views.py
+
+  Trace:
+
+  Guest places order
+  → POST /api/orders/
+  → Order created
+  → OrderItems created
+  → caterer receives notification
+
+  Manager generates bill
+  → POST /api/bills/
+  → Bill created
+  → selected orders attached
+  → PDF endpoint can generate bill
+
+  Caretaker resolves rejected order
+  → PATCH /api/orders/{id}/
+  → optionally POST /api/external-purchases/
+  → guest/caterer notifications created
+
+  Write this explanation:
+
+  - “The same order data is reused by multiple roles. Guests create orders, caterers approve or reject them, caretakers resolve
+    rejected orders, and managers generate bills from completed orders.”
+
+  Practice questions:
+
+  - How does a guest order become visible to a caterer?
+  - What does the manager do?
+  - What does the caretaker do?
+  - What is the purpose of ExternalPurchase?
+
+  ## Day 7: Interview Prep And Final Mental Model
+
+  Create your final one-page cheat sheet with these sections:
+
+  - App purpose.
+  - Tech stack.
+  - Main roles.
+  - Main database models.
+  - One complete user flow.
+  - One API example.
+  - One bug or improvement.
+  - One security concept.
+  - One thing you learned about full-stack apps.
+
+  Recommended full-stack explanation:
+
+  BookMyMeal is a role-based resort meal management app. The frontend is React with TypeScript and Vite. The backend is Django REST
+  Framework. Users log in with JWT authentication. React pages call backend API endpoints through helper functions. Django views
+  check the user role, use serializers to validate/format data, and read or update database models like User, MenuItem, Order,
+  OrderItem, Bill, and Notification.
+
+  Practice answering these:
+
+  - Tell me about your project.
+  - What tech stack did you use?
+  - What happens when a caterer approves an order?
+  - How does authentication work?
+  - What is a REST API?
+  - What is a serializer?
+  - What is a model?
+  - How does frontend communicate with backend?
+  - How is role-based access handled?
+  - What is one bug you found?
+  - What would you improve next?
+
+  Final self-test:
+
+  - Open any page file and explain what API it calls.
+  - Open any backend endpoint and explain which model it touches.
+  - Explain one complete flow without looking at notes.
+  - Draw this from memory:
+
+  React Page
+  → api.ts
+  → Django URL
+  → Django View
+  → Serializer
+  → Model
+  → Database
+  → JSON response
+  → React state update
+
+  ## Assumptions
+
+  - You will study 2-3 hours per day.
+  - Priority is balanced full-stack basics, not deep Django or React mastery.
+  - You are not changing code during this week; the goal is understanding and interview confidence.
+  - Focus on the active app in frontend/src, not the stale nested frontend/bookmymeal-frontend copy.
+  - It is okay if you do not understand every syntax detail. The goal is to explain the system accurately at a beginner level.

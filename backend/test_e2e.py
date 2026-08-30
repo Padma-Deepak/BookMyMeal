@@ -203,11 +203,85 @@ expect_fail("POST", "/orders/", 400, {
     "allergy_notes": "Empty order",
 }, token=GUEST_TOK, label="Guest places empty order -> 400")
 
-# Edge: guest cannot patch orders (only caterer/caretaker can)
+# Edge: guest cannot change order status via PATCH (only items/allergy_notes allowed)
 if ORDER1_ID:
-    expect_fail("PATCH", f"/orders/{ORDER1_ID}/", 403,
+    expect_fail("PATCH", f"/orders/{ORDER1_ID}/", 400,
                 {"status": "accepted"},
-                token=GUEST_TOK, label="Guest cannot PATCH order status -> 403")
+                token=GUEST_TOK, label="Guest PATCH with only status field -> 400 (no editable fields)")
+
+# Guest CAN edit allergy_notes on their own still-pending order
+if ORDER1_ID:
+    edited = req("PATCH", f"/orders/{ORDER1_ID}/",
+                 {"allergy_notes": "No peanuts, no dairy"},
+                 token=GUEST_TOK, label="Guest edits allergy_notes on pending order")
+    if edited:
+        check(edited.get("allergy_notes") == "No peanuts, no dairy", "allergy_notes updated by guest")
+        check(edited.get("is_editable") is True, "Still-pending order reports is_editable=True")
+
+# ── 3b. Guest preorder lifecycle: create, edit items, cancel ──────────────────
+section("3b. Guest preorder lifecycle (create/edit/cancel)")
+
+ORDER5_ID = None
+if menu and GUEST_TOK:
+    single_cat_item = available[0]
+    order5 = req("POST", "/orders/", {
+        "items": [{"menu_item_id": single_cat_item["id"], "quantity": 1, "spicy_level": "None"}],
+        "allergy_notes": "",
+    }, token=GUEST_TOK, label="Guest places Order 5 (preorder lifecycle test)")
+    if order5:
+        ORDER5_ID = order5["id"]
+        check(order5.get("is_editable") is True, "New pending order is_editable=True")
+
+    if ORDER5_ID:
+        edited5 = req("PATCH", f"/orders/{ORDER5_ID}/", {
+            "items": [{"menu_item_id": single_cat_item["id"], "quantity": 3, "spicy_level": "Hot"}],
+        }, token=GUEST_TOK, label="Guest edits Order 5 items (qty 1 -> 3)")
+        if edited5:
+            check(edited5["items_detail"][0]["quantity"] == 3, "Order 5 quantity updated to 3")
+
+        req("DELETE", f"/orders/{ORDER5_ID}/", token=GUEST_TOK, expect_status=204,
+            label="Guest cancels Order 5")
+        expect_fail("GET", f"/orders/{ORDER5_ID}/", 404, token=GUEST_TOK,
+                    label="Cancelled Order 5 no longer exists -> 404")
+
+    # Mixed-category order rejected
+    other_cat_item = next((m for m in available if m["category"] != single_cat_item["category"]), None)
+    if other_cat_item:
+        expect_fail("POST", "/orders/", 400, {
+            "items": [
+                {"menu_item_id": single_cat_item["id"], "quantity": 1, "spicy_level": "None"},
+                {"menu_item_id": other_cat_item["id"], "quantity": 1, "spicy_level": "None"},
+            ],
+            "allergy_notes": "",
+        }, token=GUEST_TOK, label="Guest cannot mix meal categories in one order -> 400")
+
+# Cutoff enforcement: an item requiring more notice than remains today blocks edit/delete
+long_notice_item = req("POST", "/menu-items/", {
+    "name":                  "Test Slow-Roast (long notice)",
+    "category":              "dinner",
+    "caterer_price":         50,
+    "customer_price":        90,
+    "notice_period_minutes": 1440,
+    "is_complimentary":      False,
+    "is_available":          True,
+    "description":           "Test item — always past its notice-period cutoff",
+}, token=CATERER_TOK, label="Caterer creates long-notice test item")
+LONG_NOTICE_ITEM_ID = long_notice_item["id"] if long_notice_item else None
+
+ORDER6_ID = None
+if LONG_NOTICE_ITEM_ID and GUEST_TOK:
+    order6 = req("POST", "/orders/", {
+        "items": [{"menu_item_id": LONG_NOTICE_ITEM_ID, "quantity": 1, "spicy_level": "None"}],
+        "allergy_notes": "",
+    }, token=GUEST_TOK, label="Guest places Order 6 (long-notice item)")
+    if order6:
+        ORDER6_ID = order6["id"]
+        check(order6.get("is_editable") is False, "Order past notice cutoff reports is_editable=False")
+        expect_fail("PATCH", f"/orders/{ORDER6_ID}/", 403,
+                    {"allergy_notes": "trying anyway"},
+                    token=GUEST_TOK, label="Guest PATCH blocked by notice-period cutoff -> 403")
+        expect_fail("DELETE", f"/orders/{ORDER6_ID}/", 403,
+                    token=GUEST_TOK, label="Guest DELETE blocked by notice-period cutoff -> 403")
 
 # ── 4. Caterer views pending orders ───────────────────────────────────────────
 section("4. Caterer views pending orders")
@@ -282,6 +356,14 @@ if ORDER1_ID:
                    token=CATERER_TOK, label="Caterer marks Order 1 as prepared")
     if prepared:
         check(prepared["status"] == "prepared", "Order 1 is now prepared")
+
+    # Once a caterer has acted on it, the guest can no longer edit/cancel it
+    # regardless of notice period.
+    expect_fail("PATCH", f"/orders/{ORDER1_ID}/", 403,
+                {"allergy_notes": "too late now"},
+                token=GUEST_TOK, label="Guest PATCH blocked once order is no longer pending -> 403")
+    expect_fail("DELETE", f"/orders/{ORDER1_ID}/", 403,
+                token=GUEST_TOK, label="Guest DELETE blocked once order is no longer pending -> 403")
 
 # Invalid status transition: accepted → rejected (not allowed for caterer once accepted)
 # (This depends on backend validation — skip if not enforced)

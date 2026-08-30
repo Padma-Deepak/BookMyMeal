@@ -1,9 +1,11 @@
+from django.db.models import ProtectedError
 from django.http import HttpResponse
 from django.shortcuts import get_object_or_404
 from rest_framework import generics, status
 from rest_framework.response import Response
 from rest_framework.views import APIView
 from rest_framework.permissions import IsAuthenticated
+from rest_framework.exceptions import ValidationError
 from rest_framework_simplejwt.views import TokenObtainPairView
 
 from .models import (
@@ -24,6 +26,17 @@ from .permissions import IsManagerOrAbove
 
 def notify(user, message):
     Notification.objects.create(user=user, message=message)
+
+
+def _validate_single_category(items_data):
+    """Guest-initiated writes only: an order may only contain items from one
+    meal category (breakfast/lunch/dinner/snacks/beverage) — 'one order per meal'."""
+    menu_item_ids = [i['menu_item_id'] for i in items_data]
+    categories = set(MenuItem.objects.filter(id__in=menu_item_ids).values_list('category', flat=True))
+    if len(categories) > 1:
+        raise ValidationError({
+            'items': 'An order can only contain items from one meal category. Please submit separate orders.'
+        })
 
 
 # ─── Auth ─────────────────────────────────────────────────────────────────────
@@ -110,7 +123,13 @@ class MenuItemDetailView(generics.RetrieveUpdateDestroyAPIView):
     def destroy(self, request, *args, **kwargs):
         if request.user.role not in ('caterer', 'superuser'):
             return Response({'detail': 'Only caterers can delete menu items.'}, status=403)
-        return super().destroy(request, *args, **kwargs)
+        try:
+            return super().destroy(request, *args, **kwargs)
+        except ProtectedError:
+            return Response(
+                {'detail': 'This item has existing orders and cannot be deleted. Disable it instead.'},
+                status=400,
+            )
 
 
 # ─── Orders ───────────────────────────────────────────────────────────────────
@@ -153,6 +172,7 @@ class OrderListCreateView(generics.ListCreateAPIView):
         if self.request.user.role not in ('guest', 'superuser'):
             from rest_framework.exceptions import PermissionDenied
             raise PermissionDenied("Only guests can place orders.")
+        _validate_single_category(serializer.validated_data['items'])
         order = serializer.save()
         # Notify caterers whose items are in this order (PRD §4.2.2)
         caterer_ids = (
@@ -164,10 +184,13 @@ class OrderListCreateView(generics.ListCreateAPIView):
             notify(caterer, f"New order from {order.guest.username} — please review.")
 
 
-class OrderDetailView(generics.RetrieveUpdateAPIView):
+class OrderDetailView(generics.RetrieveUpdateDestroyAPIView):
     """
-    GET   /api/orders/<uuid>/ — retrieve single order.
-    PATCH /api/orders/<uuid>/ — caterer updates status; caretaker modifies items.
+    GET    /api/orders/<uuid>/ — retrieve single order.
+    PATCH  /api/orders/<uuid>/ — caterer updates status; caretaker modifies items;
+                                  guest edits items/allergy_notes on their own order
+                                  while it's still pending and before its notice-period cutoff.
+    DELETE /api/orders/<uuid>/ — guest cancels their own order under the same conditions.
     """
     serializer_class = OrderSerializer
     permission_classes = [IsAuthenticated]
@@ -268,7 +291,44 @@ class OrderDetailView(generics.RetrieveUpdateAPIView):
             serializer.save()
             return Response(serializer.data)
 
+        elif user.role == 'guest':
+            if not order.is_editable:
+                return Response(
+                    {'detail': 'This order can no longer be edited (cutoff passed or already processed).'},
+                    status=403
+                )
+            allowed = {'items', 'allergy_notes'}
+            data = {k: v for k, v in request.data.items() if k in allowed}
+            if not data:
+                return Response({'detail': 'No editable fields provided.'}, status=400)
+            if 'items' in data:
+                _validate_single_category(data['items'])
+            serializer = self.get_serializer(order, data=data, partial=True)
+            serializer.is_valid(raise_exception=True)
+            serializer.save()
+            caterer_ids = order.items.values_list('menu_item__caterer_id', flat=True).distinct()
+            for caterer in User.objects.filter(id__in=caterer_ids):
+                notify(caterer, f"{order.guest.username} updated their order — please review.")
+            return Response(serializer.data)
+
         return Response({'detail': 'Permission denied.'}, status=403)
+
+    def destroy(self, request, *args, **kwargs):
+        order = self.get_object()
+        user = request.user
+        if user.role not in ('guest', 'superuser'):
+            return Response({'detail': 'Only the guest who placed the order can cancel it.'}, status=403)
+        if not order.is_editable:
+            return Response(
+                {'detail': 'This order can no longer be cancelled (cutoff passed or already processed).'},
+                status=403
+            )
+        caterer_ids = list(order.items.values_list('menu_item__caterer_id', flat=True).distinct())
+        guest_username = order.guest.username
+        order.delete()
+        for caterer in User.objects.filter(id__in=caterer_ids):
+            notify(caterer, f"{guest_username} cancelled their order.")
+        return Response(status=status.HTTP_204_NO_CONTENT)
 
 
 # ─── External Purchases ───────────────────────────────────────────────────────
@@ -644,7 +704,7 @@ def generate_bill_pdf(bill, mode='guest'):
 
         # External purchases — guest bill only (PRD §4.4.2)
         if mode == 'guest':
-            ext_purchases = bill.guest.external_purchases.filter(is_paid_by_caretaker=False)
+            ext_purchases = bill.purchases.filter(is_paid_by_caretaker=False)
             if ext_purchases.exists():
                 p.setFont("Helvetica-Bold", 10)
                 p.drawString(2 * cm, y, "Caretaker Purchases")

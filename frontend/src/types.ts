@@ -54,6 +54,7 @@ export interface OrderItem {
   caterer_price?: number;
   category?: string;
   is_complimentary?: boolean;
+  notice_period_minutes?: number;
 }
 
 export interface Order {
@@ -63,6 +64,7 @@ export interface Order {
   status: 'pending' | 'accepted' | 'partially_accepted' | 'rejected' | 'prepared' | 'delivered' | 'resolved';
   items: OrderItem[];
   items_detail?: OrderItem[];
+  is_editable?: boolean;
   allergy_notes: string;
   rejection_reason?: string;
   rejection_notes?: string;
@@ -73,7 +75,11 @@ export interface Order {
 export interface ExternalPurchase {
   id: string;
   guest?: string;
+  guest_username?: string;
   order?: string | null;
+  caretaker?: string | null;
+  caretaker_username?: string | null;
+  bill?: string | null;
   vendor_name: string;
   item_name: string;
   quantity: number;
@@ -83,6 +89,26 @@ export interface ExternalPurchase {
   reimbursement_proof_url?: string | null;
   reimbursement_proof?: string | null;
   created_at?: string;
+}
+
+export interface PayoutItem {
+  item_name: string;
+  quantity: number;
+  caterer_price: number;
+  line_total: number;
+  caterer_id?: string;
+  caterer_name?: string;
+}
+
+export interface PayoutRecord {
+  id: string;
+  stay_start?: string;
+  stay_end?: string;
+  bill_date: string;
+  items: PayoutItem[];
+  total_caterer_amount: number;
+  is_paid: boolean;
+  payment_proof_url?: string;
 }
 
 export interface Bill {
@@ -95,6 +121,7 @@ export interface Bill {
   discount_percentage: number;
   payment_screenshot?: string;
   pdf_url?: string;
+  grand_total: number;
   created_at: string;
 }
 

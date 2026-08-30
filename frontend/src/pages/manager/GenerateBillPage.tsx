@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import Layout from '../../components/Layout';
 import { apiGet, apiPost } from '../../lib/api';
-import type { Order, Bill } from '../../types';
+import type { Order, Bill, ExternalPurchase } from '../../types';
 
 const GenerateBillPage: React.FC = () => {
   const navigate = useNavigate();
@@ -10,6 +10,7 @@ const GenerateBillPage: React.FC = () => {
   const guestId = searchParams.get('guest') || '';
   const [orders, setOrders] = useState<Order[]>([]);
   const [selectedOrderIds, setSelectedOrderIds] = useState<Set<string>>(new Set());
+  const [unbilledPurchases, setUnbilledPurchases] = useState<ExternalPurchase[]>([]);
   const [discountAmount, setDiscountAmount] = useState('');
   const [discountPct, setDiscountPct] = useState('');
   const [loading, setLoading] = useState(true);
@@ -18,11 +19,17 @@ const GenerateBillPage: React.FC = () => {
 
   useEffect(() => {
     if (!guestId) { setLoading(false); return; }
-    apiGet<Order[]>(`/orders/?guest_id=${guestId}`)
-      .then(o => {
+    Promise.all([
+      apiGet<Order[]>(`/orders/?guest_id=${guestId}`),
+      apiGet<ExternalPurchase[]>(`/external-purchases/?guest_id=${guestId}`),
+    ])
+      .then(([o, purchases]) => {
         const eligible = o.filter(ord => ['accepted', 'prepared', 'delivered', 'resolved'].includes(ord.status));
         setOrders(eligible);
         setSelectedOrderIds(new Set(eligible.map(o => o.id)));
+        // These will be auto-attached to the bill on generation (PRD §4.3.2) —
+        // shown here so the preview total matches what the bill actually ends up as.
+        setUnbilledPurchases(purchases.filter(p => !p.bill && !p.is_paid_by_caretaker));
       })
       .finally(() => setLoading(false));
   }, [guestId]);
@@ -38,9 +45,11 @@ const GenerateBillPage: React.FC = () => {
   const orderTotal = (order: Order) =>
     (order.items_detail || []).reduce((s, item) => s + (item.is_complimentary ? 0 : (item.customer_price ?? 0) * item.quantity), 0);
 
-  const subtotal = orders
+  const ordersSubtotal = orders
     .filter(o => selectedOrderIds.has(o.id))
     .reduce((s, o) => s + orderTotal(o), 0);
+  const externalSubtotal = unbilledPurchases.reduce((s, p) => s + Number(p.cost), 0);
+  const subtotal = ordersSubtotal + externalSubtotal;
 
   const discountVal = discountAmount
     ? parseFloat(discountAmount) || 0
@@ -170,9 +179,15 @@ const GenerateBillPage: React.FC = () => {
             </div>
             <div style={{ borderTop: '1px solid #e5e7eb', paddingTop: '0.875rem' }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.875rem', color: '#6b7280', marginBottom: '0.3rem' }}>
-                <span>Subtotal ({selectedOrderIds.size} orders)</span>
-                <span>₹{subtotal.toFixed(2)}</span>
+                <span>Orders ({selectedOrderIds.size} selected)</span>
+                <span>₹{ordersSubtotal.toFixed(2)}</span>
               </div>
+              {externalSubtotal > 0 && (
+                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.875rem', color: '#6b7280', marginBottom: '0.3rem' }}>
+                  <span>Caretaker purchases ({unbilledPurchases.length})</span>
+                  <span>₹{externalSubtotal.toFixed(2)}</span>
+                </div>
+              )}
               {discountVal > 0 && (
                 <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.875rem', color: '#16a34a', marginBottom: '0.3rem' }}>
                   <span>Discount</span>

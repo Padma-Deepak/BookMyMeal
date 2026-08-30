@@ -10,6 +10,12 @@ interface ItemDecision {
   rejection_notes: string;
 }
 
+const isToday = (dateStr: string) => {
+  const d = new Date(dateStr);
+  const now = new Date();
+  return d.getFullYear() === now.getFullYear() && d.getMonth() === now.getMonth() && d.getDate() === now.getDate();
+};
+
 const OrdersPage: React.FC = () => {
   const [orders, setOrders] = useState<Order[]>([]);
   const [loading, setLoading] = useState(true);
@@ -17,12 +23,16 @@ const OrdersPage: React.FC = () => {
   const [itemDecisions, setItemDecisions] = useState<Record<number, ItemDecision>>({});
   const [processingId, setProcessingId] = useState<string | null>(null);
   const [error, setError] = useState('');
+  const [confirmingPreparedId, setConfirmingPreparedId] = useState<string | null>(null);
 
   const fetchOrders = () =>
     Promise.all([
       apiGet<Order[]>('/orders/?status=pending'),
       apiGet<Order[]>('/orders/?status=accepted'),
-    ]).then(([pending, accepted]) => setOrders([...pending, ...accepted]));
+      apiGet<Order[]>('/orders/?status=rejected'),
+      apiGet<Order[]>('/orders/?status=prepared'),
+      apiGet<Order[]>('/orders/?status=partially_accepted'),
+    ]).then(([pending, accepted, rejected, prepared, partial]) => setOrders([...pending, ...accepted, ...rejected, ...prepared, ...partial]));
 
   useEffect(() => {
     fetchOrders().finally(() => setLoading(false));
@@ -105,10 +115,11 @@ const OrdersPage: React.FC = () => {
     }
   };
 
-  const handleMarkPrepared = async (id: string) => {
+  const handleConfirmPrepared = async (id: string) => {
     setProcessingId(id);
     await apiPatch(`/orders/${id}/`, { status: 'prepared' });
     setProcessingId(null);
+    setConfirmingPreparedId(null);
     fetchOrders();
   };
 
@@ -116,6 +127,9 @@ const OrdersPage: React.FC = () => {
 
   const pendingOrders = orders.filter(o => o.status === 'pending');
   const acceptedOrders = orders.filter(o => o.status === 'accepted');
+  const rejectedOrders = orders.filter(o => (o.status === 'rejected' || o.status === 'partially_accepted') && isToday(o.updated_at));
+  const preparedOrders = orders.filter(o => o.status === 'prepared' && isToday(o.updated_at));
+  const rejectionLabel = (value?: string) => REJECTION_REASONS.find(r => r.value === value)?.label || value || 'Unknown';
 
   return (
     <Layout>
@@ -124,7 +138,7 @@ const OrdersPage: React.FC = () => {
         <p style={{ color: '#6b7280', fontSize: '0.875rem', marginTop: 2 }}>Accept or reject items individually</p>
       </div>
 
-      {pendingOrders.length === 0 && acceptedOrders.length === 0 && (
+      {pendingOrders.length === 0 && acceptedOrders.length === 0 && rejectedOrders.length === 0 && preparedOrders.length === 0 && (
         <div style={{ textAlign: 'center', padding: '3rem', color: '#6b7280' }}>
           <p style={{ fontWeight: 500 }}>No orders at the moment.</p>
           <p style={{ fontSize: '0.875rem', marginTop: 4 }}>New orders will appear here.</p>
@@ -340,13 +354,135 @@ const OrdersPage: React.FC = () => {
                     Note: {order.allergy_notes}
                   </p>
                 )}
-                <button
-                  onClick={() => handleMarkPrepared(order.id)}
-                  disabled={processingId === order.id}
-                  style={{ marginTop: '0.875rem', background: '#1d4ed8', color: '#fff', border: 'none', borderRadius: 7, padding: '0.45rem 1.125rem', cursor: 'pointer', fontWeight: 600, fontSize: '0.875rem', minHeight: 38 }}
-                >
-                  {processingId === order.id ? 'Updating…' : 'Mark as Prepared'}
-                </button>
+                {confirmingPreparedId === order.id ? (
+                  <div style={{ marginTop: '0.875rem', display: 'flex', alignItems: 'center', gap: '0.6rem', flexWrap: 'wrap' }}>
+                    <span style={{ fontSize: '0.82rem', color: '#374151', fontWeight: 500 }}>Confirm this order is fully prepared?</span>
+                    <button
+                      onClick={() => handleConfirmPrepared(order.id)}
+                      disabled={processingId === order.id}
+                      style={{ background: processingId === order.id ? '#93c5fd' : '#1d4ed8', color: '#fff', border: 'none', borderRadius: 7, padding: '0.45rem 1.125rem', cursor: processingId === order.id ? 'not-allowed' : 'pointer', fontWeight: 600, fontSize: '0.875rem', minHeight: 38 }}
+                    >
+                      {processingId === order.id ? 'Confirming…' : 'Yes, Confirm Prepared'}
+                    </button>
+                    <button
+                      onClick={() => setConfirmingPreparedId(null)}
+                      disabled={processingId === order.id}
+                      style={{ background: '#fff', border: '1px solid #e5e7eb', borderRadius: 7, padding: '0.45rem 0.875rem', cursor: 'pointer', fontSize: '0.875rem', minHeight: 38, color: '#374151' }}
+                    >
+                      Cancel
+                    </button>
+                  </div>
+                ) : (
+                  <button
+                    onClick={() => setConfirmingPreparedId(order.id)}
+                    style={{ marginTop: '0.875rem', background: '#1d4ed8', color: '#fff', border: 'none', borderRadius: 7, padding: '0.45rem 1.125rem', cursor: 'pointer', fontWeight: 600, fontSize: '0.875rem', minHeight: 38 }}
+                  >
+                    Mark as Prepared
+                  </button>
+                )}
+              </div>
+            ))}
+          </div>
+        </section>
+      )}
+
+      {rejectedOrders.length > 0 && (
+        <section style={{ marginTop: '2rem' }}>
+          <h2 style={{ fontSize: '0.8rem', fontWeight: 600, color: '#991b1b', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: '0.875rem' }}>
+            Rejected Today ({rejectedOrders.length})
+          </h2>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+            {rejectedOrders.map(order => {
+              const isPartial = order.status === 'partially_accepted';
+              return (
+              <div key={order.id} style={{ background: '#fff', border: '1px solid #e5e7eb', borderRadius: 10, padding: '1rem 1.125rem', boxShadow: '0 1px 3px rgba(0,0,0,0.04)' }}>
+                <div style={{ display: 'flex', gap: '0.75rem', alignItems: 'center', marginBottom: '0.75rem' }}>
+                  <span style={{ fontSize: '0.75rem', color: '#9ca3af', fontFamily: 'monospace' }}>#{order.id.slice(0, 8)}</span>
+                  <span style={{ fontSize: '0.8rem', color: '#6b7280' }}>{new Date(order.created_at).toLocaleString()}</span>
+                  <span style={{ background: '#fee2e2', color: '#991b1b', fontSize: '0.72rem', fontWeight: 600, padding: '2px 8px', borderRadius: 10 }}>
+                    {isPartial ? 'Partially Rejected' : 'Rejected'}
+                  </span>
+                </div>
+                {isPartial && (order.items_detail ?? order.items ?? []).length > 0 && (
+                  <>
+                    <p style={{ fontSize: '0.78rem', color: '#6b7280', marginBottom: '0.3rem' }}>Still being prepared:</p>
+                    <table style={{ width: '100%', fontSize: '0.875rem', marginBottom: '0.5rem' }}>
+                      <tbody>
+                        {(order.items_detail ?? order.items ?? []).map((item, idx) => {
+                          const d = item as { name?: string; quantity: number; spicy_level?: string };
+                          return (
+                            <tr key={idx} style={{ borderTop: idx > 0 ? '1px solid #f0ece3' : undefined }}>
+                              <td style={{ padding: '0.3rem 0', color: '#374151', fontWeight: 500 }}>
+                                {d.name || (item as { menu_item_id: string }).menu_item_id}
+                              </td>
+                              <td style={{ padding: '0.3rem', textAlign: 'center', color: '#6b7280' }}>×{d.quantity}</td>
+                              <td style={{ padding: '0.3rem', color: '#9ca3af', fontSize: '0.8rem' }}>{d.spicy_level}</td>
+                            </tr>
+                          );
+                        })}
+                      </tbody>
+                    </table>
+                  </>
+                )}
+                {!isPartial && (
+                  <table style={{ width: '100%', fontSize: '0.875rem', marginBottom: '0.5rem' }}>
+                    <tbody>
+                      {(order.items_detail ?? order.items ?? []).map((item, idx) => {
+                        const d = item as { name?: string; quantity: number; spicy_level?: string };
+                        return (
+                          <tr key={idx} style={{ borderTop: idx > 0 ? '1px solid #f0ece3' : undefined }}>
+                            <td style={{ padding: '0.3rem 0', color: '#374151', fontWeight: 500 }}>
+                              {d.name || (item as { menu_item_id: string }).menu_item_id}
+                            </td>
+                            <td style={{ padding: '0.3rem', textAlign: 'center', color: '#6b7280' }}>×{d.quantity}</td>
+                            <td style={{ padding: '0.3rem', color: '#9ca3af', fontSize: '0.8rem' }}>{d.spicy_level}</td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                )}
+                <p style={{ fontSize: '0.82rem', color: '#991b1b', background: '#fef2f2', border: '1px solid #fecaca', padding: '0.4rem 0.65rem', borderRadius: 5 }}>
+                  {isPartial
+                    ? order.rejection_notes
+                    : <>Reason: {rejectionLabel(order.rejection_reason)}{order.rejection_notes ? ` — ${order.rejection_notes}` : ''}</>}
+                </p>
+              </div>
+              );
+            })}
+          </div>
+        </section>
+      )}
+
+      {preparedOrders.length > 0 && (
+        <section style={{ marginTop: '2rem' }}>
+          <h2 style={{ fontSize: '0.8rem', fontWeight: 600, color: '#4338ca', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: '0.875rem' }}>
+            Prepared Today — Awaiting Delivery ({preparedOrders.length})
+          </h2>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+            {preparedOrders.map(order => (
+              <div key={order.id} style={{ background: '#fff', border: '1px solid #e5e7eb', borderRadius: 10, padding: '1rem 1.125rem', boxShadow: '0 1px 3px rgba(0,0,0,0.04)' }}>
+                <div style={{ display: 'flex', gap: '0.75rem', alignItems: 'center', marginBottom: '0.75rem' }}>
+                  <span style={{ fontSize: '0.75rem', color: '#9ca3af', fontFamily: 'monospace' }}>#{order.id.slice(0, 8)}</span>
+                  <span style={{ fontSize: '0.8rem', color: '#6b7280' }}>{new Date(order.created_at).toLocaleString()}</span>
+                  <span style={{ background: '#e0e7ff', color: '#4338ca', fontSize: '0.72rem', fontWeight: 600, padding: '2px 8px', borderRadius: 10 }}>Prepared</span>
+                </div>
+                <table style={{ width: '100%', fontSize: '0.875rem' }}>
+                  <tbody>
+                    {(order.items_detail ?? order.items ?? []).map((item, idx) => {
+                      const d = item as { name?: string; quantity: number; spicy_level?: string };
+                      return (
+                        <tr key={idx} style={{ borderTop: idx > 0 ? '1px solid #f0ece3' : undefined }}>
+                          <td style={{ padding: '0.3rem 0', color: '#374151', fontWeight: 500 }}>
+                            {d.name || (item as { menu_item_id: string }).menu_item_id}
+                          </td>
+                          <td style={{ padding: '0.3rem', textAlign: 'center', color: '#6b7280' }}>×{d.quantity}</td>
+                          <td style={{ padding: '0.3rem', color: '#9ca3af', fontSize: '0.8rem' }}>{d.spicy_level}</td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
               </div>
             ))}
           </div>

@@ -9,6 +9,7 @@ import UnauthorizedPage from './pages/UnauthorizedPage';
 // Guest
 import MenuPage from './pages/guest/MenuPage';
 import OrderSummaryPage from './pages/guest/OrderSummaryPage';
+import TodaysOrdersPage from './pages/guest/TodaysOrdersPage';
 import BillPage from './pages/guest/BillPage';
 
 // Caterer
@@ -70,6 +71,11 @@ function App() {
             <Route path="/guest/order/summary" element={
               <ProtectedRoute allowedRoles={['guest', 'superuser']}>
                 <OrderSummaryPage />
+              </ProtectedRoute>
+            } />
+            <Route path="/guest/today" element={
+              <ProtectedRoute allowedRoles={['guest', 'superuser']}>
+                <TodaysOrdersPage />
               </ProtectedRoute>
             } />
             <Route path="/guest/bill" element={

@@ -5,9 +5,10 @@ import Layout from '../../components/Layout';
 import { useCart } from '../../context/CartContext';
 import { apiPost } from '../../lib/api';
 import type { Order } from '../../types';
+import { CATEGORY_LABELS } from '../../types';
 
 const OrderSummaryPage: React.FC = () => {
-  const { items, allergyNotes, setAllergyNotes, updateItem, removeItem, clearCart, total } = useCart();
+  const { items, allergyNotes, setAllergyNotes, updateItem, removeItem, total } = useCart();
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState('');
   const [submitted, setSubmitted] = useState(false);
@@ -32,25 +33,39 @@ const OrderSummaryPage: React.FC = () => {
   const handleSubmit = async () => {
     setError('');
     setSubmitting(true);
-    try {
+
+    // One order per meal: split the cart by category and submit separately.
+    const groups = items.reduce<Record<string, typeof items>>((acc, item) => {
+      (acc[item.category] ||= []).push(item);
+      return acc;
+    }, {});
+
+    const failures: string[] = [];
+    for (const [category, groupItems] of Object.entries(groups)) {
       const payload = {
-        items: items.map(i => ({
+        items: groupItems.map(i => ({
           menu_item_id: i.menu_item_id,
           quantity: i.quantity,
           spicy_level: i.spicy_level,
         })),
         allergy_notes: allergyNotes,
       };
-      await apiPost<Order>('/orders/', payload);
-      clearCart();
-      setSubmitted(true);
-    } catch (err: unknown) {
-      const e = err as { data?: Record<string, unknown> };
-      const msg = e.data ? Object.values(e.data).flat().join(' ') : 'Failed to submit order. Please try again.';
-      setError(msg);
-    } finally {
-      setSubmitting(false);
+      try {
+        await apiPost<Order>('/orders/', payload);
+        groupItems.forEach(i => removeItem(i.menu_item_id));
+      } catch (err: unknown) {
+        const e = err as { data?: Record<string, unknown> };
+        const msg = e.data ? Object.values(e.data).flat().join(' ') : 'Failed to submit order.';
+        failures.push(`${CATEGORY_LABELS[category] ?? category}: ${msg}`);
+      }
     }
+
+    if (failures.length === 0) {
+      setSubmitted(true);
+    } else {
+      setError(failures.join(' · '));
+    }
+    setSubmitting(false);
   };
 
   if (submitted) {

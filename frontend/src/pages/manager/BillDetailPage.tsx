@@ -88,14 +88,12 @@ const BillDetailPage: React.FC = () => {
     sum + (order.items_detail || []).reduce((s, item) =>
       s + (item.is_complimentary ? 0 : (item.customer_price ?? 0) * item.quantity), 0), 0);
   const externalTotal = externalPurchases.reduce((s, ep) => s + Number(ep.cost), 0);
+  // Caretaker out-of-pocket expenses (is_paid_by_caretaker=true) are never billed to the
+  // guest — shown below for reimbursement tracking only, excluded from the guest's total.
   const caretakerExpensesTotal = caretakerExpenses.reduce((s, ep) => s + Number(ep.cost), 0);
-  const subtotal = ordersTotal + externalTotal + caretakerExpensesTotal;
-  const discountValue = Number(bill.discount_amount) > 0
-    ? Number(bill.discount_amount)
-    : Number(bill.discount_percentage) > 0
-      ? subtotal * (Number(bill.discount_percentage) / 100)
-      : 0;
-  const grandTotal = subtotal - discountValue;
+  const subtotal = ordersTotal + externalTotal;
+  const discountValue = subtotal - bill.grand_total;
+  const grandTotal = bill.grand_total;
 
   const sectionCard: React.CSSProperties = {
     background: '#fff',

@@ -99,12 +99,13 @@ class OrderItemReadSerializer(serializers.ModelSerializer):
     )
     category = serializers.CharField(source='menu_item.category', read_only=True)
     is_complimentary = serializers.BooleanField(source='menu_item.is_complimentary', read_only=True)
+    notice_period_minutes = serializers.IntegerField(source='menu_item.notice_period_minutes', read_only=True)
 
     class Meta:
         model = OrderItem
         fields = [
             'menu_item_id', 'name', 'customer_price', 'caterer_price',
-            'category', 'is_complimentary', 'quantity', 'spicy_level',
+            'category', 'is_complimentary', 'notice_period_minutes', 'quantity', 'spicy_level',
         ]
 
     def to_representation(self, instance):
@@ -134,16 +135,17 @@ class OrderSerializer(serializers.ModelSerializer):
     # guest returns UUID; guest_detail returns full object
     guest = serializers.UUIDField(source='guest.id', read_only=True)
     guest_detail = UserSerializer(source='guest', read_only=True)
+    is_editable = serializers.BooleanField(read_only=True)
 
     class Meta:
         model = Order
         fields = [
             'id', 'guest', 'guest_detail', 'status',
-            'items', 'items_detail',
+            'items', 'items_detail', 'is_editable',
             'allergy_notes', 'rejection_reason', 'rejection_notes',
             'created_at', 'updated_at',
         ]
-        read_only_fields = ['id', 'created_at', 'updated_at', 'guest', 'guest_detail']
+        read_only_fields = ['id', 'created_at', 'updated_at', 'guest', 'guest_detail', 'is_editable']
 
     def _save_items(self, order, items_data):
         order.items.all().delete()
@@ -193,14 +195,17 @@ class VendorSerializer(serializers.ModelSerializer):
 # ─── External Purchases ───────────────────────────────────────────────────────
 
 class ExternalPurchaseSerializer(serializers.ModelSerializer):
+    guest_username = serializers.CharField(source='guest.username', read_only=True)
+    caretaker_username = serializers.CharField(source='caretaker.username', read_only=True, default=None)
+
     class Meta:
         model = ExternalPurchase
         fields = [
-            'id', 'guest', 'order', 'vendor_name', 'item_name',
-            'quantity', 'cost', 'is_paid_by_caretaker',
-            'is_reimbursed', 'reimbursement_proof', 'created_at',
+            'id', 'guest', 'guest_username', 'order', 'caretaker', 'caretaker_username',
+            'vendor_name', 'item_name', 'quantity', 'cost', 'is_paid_by_caretaker',
+            'is_reimbursed', 'reimbursement_proof', 'bill', 'created_at',
         ]
-        read_only_fields = ['id', 'created_at']
+        read_only_fields = ['id', 'created_at', 'caretaker', 'bill']
 
     def create(self, validated_data):
         vendor_name = validated_data.get('vendor_name', '').strip()
@@ -259,7 +264,7 @@ class BillSerializer(serializers.ModelSerializer):
         read_only_fields = ['id', 'created_at']
 
     def get_external_purchases_detail(self, obj):
-        purchases = ExternalPurchase.objects.filter(guest=obj.guest, is_paid_by_caretaker=False)
+        purchases = ExternalPurchase.objects.filter(bill=obj, is_paid_by_caretaker=False)
         return ExternalPurchaseDetailSerializer(purchases, many=True, context=self.context).data
 
     def get_grand_total(self, obj):
@@ -271,7 +276,7 @@ class BillSerializer(serializers.ModelSerializer):
         )
         ext_sub = sum(
             ep.cost
-            for ep in ExternalPurchase.objects.filter(guest=obj.guest, is_paid_by_caretaker=False)
+            for ep in ExternalPurchase.objects.filter(bill=obj, is_paid_by_caretaker=False)
         )
         subtotal = orders_sub + ext_sub
         if obj.discount_amount and obj.discount_amount > 0:
@@ -300,6 +305,10 @@ class BillSerializer(serializers.ModelSerializer):
             )
             orders = Order.objects.filter(id__in=order_ids, guest=guest)
             bill.orders.set(orders)
+            # Attach any of this guest's not-yet-billed, caretaker-unpaid purchases (PRD §4.3.2).
+            ExternalPurchase.objects.filter(
+                guest=guest, is_paid_by_caretaker=False, bill__isnull=True
+            ).update(bill=bill)
         return bill
 
 
@@ -348,13 +357,15 @@ class CatererBillSerializer(serializers.ModelSerializer):
         return user if user and user.role == 'caterer' else None
 
     def get_is_paid(self, obj):
-        return obj.status == 'paid'
+        # Whether the FACILITY has paid the caterer(s) for this bill (caterer payment
+        # proof uploaded) — distinct from the guest's own payment status on `obj.status`.
+        return obj.caterer_payments.exists()
 
     def get_items(self, obj):
         caterer = self._caterer_filter(obj)
         result = []
-        for order in obj.orders.prefetch_related('items__menu_item').all():
-            for item in order.items.select_related('menu_item').all():
+        for order in obj.orders.prefetch_related('items__menu_item__caterer').all():
+            for item in order.items.select_related('menu_item__caterer').all():
                 if caterer and item.menu_item.caterer_id != caterer.id:
                     continue
                 result.append({
@@ -362,6 +373,8 @@ class CatererBillSerializer(serializers.ModelSerializer):
                     'quantity': item.quantity,
                     'caterer_price': float(item.menu_item.caterer_price),
                     'line_total': float(item.menu_item.caterer_price) * item.quantity,
+                    'caterer_id': str(item.menu_item.caterer_id),
+                    'caterer_name': item.menu_item.caterer.username,
                 })
         return result
 

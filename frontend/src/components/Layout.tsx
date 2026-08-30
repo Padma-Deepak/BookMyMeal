@@ -14,6 +14,7 @@ function navForRole(role: string): NavItem[] {
     case 'guest':
       return [
         { to: '/guest/menu', label: 'Menu' },
+        { to: '/guest/today', label: "Today's Orders" },
         { to: '/guest/bill', label: 'My Bill' },
       ];
     case 'caterer':

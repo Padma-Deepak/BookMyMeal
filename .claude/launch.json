@@ -1,0 +1,21 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "backend",
+      "runtimeExecutable": "C:\\Users\\padma\\OneDrive\\Desktop\\AiLabs\\BookMyMeal\\backend\\venv\\Scripts\\python.exe",
+      "runtimeArgs": [
+        "C:\\Users\\padma\\OneDrive\\Desktop\\AiLabs\\BookMyMeal\\backend\\manage.py",
+        "runserver",
+        "8000"
+      ],
+      "port": 8000
+    },
+    {
+      "name": "frontend",
+      "runtimeExecutable": "npm",
+      "runtimeArgs": ["--prefix", "frontend", "run", "dev", "--", "--port", "3000"],
+      "port": 3000
+    }
+  ]
+}

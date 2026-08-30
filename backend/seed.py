@@ -82,6 +82,16 @@ items = [
     dict(name='Samosa',                category='snacks',    caterer_price=15,  customer_price=30,  notice_period_minutes=0,   is_complimentary=False, is_available=True,  description='Crispy pastry with spiced filling'),
     dict(name='Mango Lassi',           category='beverage',  caterer_price=25,  customer_price=60,  notice_period_minutes=0,   is_complimentary=False, is_available=True,  description='Fresh mango yogurt drink'),
     dict(name='Fish Curry',            category='dinner',    caterer_price=150, customer_price=250, notice_period_minutes=180, is_complimentary=False, is_available=False, description='Currently unavailable — seasonal'),
+    dict(name='Idly',                  category='breakfast', caterer_price=15,  customer_price=30,  notice_period_minutes=0,   is_complimentary=False, is_available=True,  description='Soft steamed rice cakes served with sambar and coconut chutney'),
+    dict(name='Rava Idly',             category='breakfast', caterer_price=18,  customer_price=35,  notice_period_minutes=0,   is_complimentary=False, is_available=True,  description='Semolina idlis, light and fluffy, with sambar and chutney'),
+    dict(name='Dosa',                  category='breakfast', caterer_price=18,  customer_price=35,  notice_period_minutes=0,   is_complimentary=False, is_available=True,  description='Thin, crispy fermented rice-and-lentil crepe'),
+    dict(name='Set Dosa',              category='breakfast', caterer_price=22,  customer_price=45,  notice_period_minutes=0,   is_complimentary=False, is_available=True,  description='Soft, spongy trio of dosas, mildly spiced'),
+    dict(name='Appam',                 category='breakfast', caterer_price=20,  customer_price=40,  notice_period_minutes=0,   is_complimentary=False, is_available=True,  description='Lacy, bowl-shaped rice pancake with a soft center'),
+    dict(name='Idiyappam',             category='breakfast', caterer_price=20,  customer_price=40,  notice_period_minutes=0,   is_complimentary=False, is_available=True,  description='Steamed rice-noodle nests, served with stew or chutney'),
+    dict(name='Puttu',                 category='breakfast', caterer_price=18,  customer_price=35,  notice_period_minutes=0,   is_complimentary=False, is_available=True,  description='Steamed layers of rice flour and grated coconut'),
+    dict(name='Kerala Parotta',        category='lunch',     caterer_price=25,  customer_price=50,  notice_period_minutes=0,   is_complimentary=False, is_available=True,  description='Flaky, layered flatbread, best with a rich curry'),
+    dict(name='Curd Rice',             category='lunch',     caterer_price=20,  customer_price=40,  notice_period_minutes=0,   is_complimentary=False, is_available=True,  description='Cooling rice tempered with curd, mustard seeds, and curry leaves'),
+    dict(name='Fried Rice',            category='dinner',    caterer_price=35,  customer_price=65,  notice_period_minutes=0,   is_complimentary=False, is_available=True,  description='Wok-tossed rice with vegetables and light seasoning'),
 ]
 
 menu_items = []

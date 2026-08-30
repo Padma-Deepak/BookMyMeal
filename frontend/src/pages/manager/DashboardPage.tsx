@@ -1,9 +1,11 @@
 import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { UserPlus, X, ChefHat, Copy, Check } from 'lucide-react';
+import { UserPlus, X, ChefHat, Copy, Check, IndianRupee } from 'lucide-react';
 import Layout from '../../components/Layout';
 import { apiGet, apiPost } from '../../lib/api';
-import type { User, Order } from '../../types';
+import type { User, Order, ExternalPurchase, PayoutRecord, Bill } from '../../types';
+
+const BILLABLE_STATUSES = ['accepted', 'prepared', 'delivered', 'resolved'];
 
 interface GuestSummary {
   guest: User;
@@ -48,19 +50,55 @@ const DashboardPage: React.FC = () => {
   const [createError, setCreateError] = useState('');
   const [newCredentials, setNewCredentials] = useState<NewCredentials | null>(null);
   const [copied, setCopied] = useState(false);
+  const [catererDue, setCatererDue] = useState({ amount: 0, count: 0 });
+  const [caretakerDue, setCaretakerDue] = useState({ amount: 0, count: 0 });
   const navigate = useNavigate();
+
+  const loadDuePayments = () => {
+    return Promise.all([
+      apiGet<PayoutRecord[]>('/caterer-bills/'),
+      apiGet<ExternalPurchase[]>('/external-purchases/'),
+    ]).then(([payouts, purchases]) => {
+      const unpaidPayouts = payouts.filter(p => !p.is_paid);
+      setCatererDue({
+        amount: unpaidPayouts.reduce((s, p) => s + p.total_caterer_amount, 0),
+        count: unpaidPayouts.length,
+      });
+      const unreimbursed = purchases.filter(p => p.is_paid_by_caretaker && !p.is_reimbursed);
+      setCaretakerDue({
+        amount: unreimbursed.reduce((s, p) => s + Number(p.cost), 0),
+        count: unreimbursed.length,
+      });
+    });
+  };
 
   const loadGuests = () => {
     return Promise.all([
       apiGet<User[]>('/users/?role=guest'),
       apiGet<Order[]>('/orders/'),
-    ]).then(([guests, orders]) => {
+      apiGet<Bill[]>('/bills/'),
+    ]).then(([guests, orders, bills]) => {
       const result: GuestSummary[] = guests.map(guest => {
         const guestOrders = orders.filter(o => o.guest === guest.id);
-        const totalSpend = guestOrders.reduce((sum, order) =>
-          sum + (order.items_detail || []).reduce((s, item) =>
-            s + (item.is_complimentary ? 0 : (item.customer_price ?? 0) * item.quantity), 0), 0);
-        return { guest, orderCount: guestOrders.length, totalSpend, billStatus: 'No bill' };
+        const billableSpend = guestOrders
+          .filter(o => BILLABLE_STATUSES.includes(o.status))
+          .reduce((sum, order) =>
+            sum + (order.items_detail || []).reduce((s, item) =>
+              s + (item.is_complimentary ? 0 : (item.customer_price ?? 0) * item.quantity), 0), 0);
+        // Prefer the guest's most recent bill's real (backend-computed) total/status —
+        // it's the same number shown on Billing History and the Bill Detail page.
+        // Fall back to billable-but-not-yet-invoiced order value when no bill exists yet.
+        const guestBills = bills
+          .filter(b => b.guest_detail?.id === guest.id)
+          .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
+        const latestBill = guestBills[0];
+        return {
+          guest,
+          orderCount: guestOrders.length,
+          totalSpend: latestBill ? latestBill.grand_total : billableSpend,
+          billStatus: latestBill ? latestBill.status : 'No bill',
+          billId: latestBill?.id,
+        };
       });
       setSummaries(result);
     });
@@ -72,7 +110,7 @@ const DashboardPage: React.FC = () => {
 
   const loadData = () => {
     setLoading(true);
-    Promise.all([loadGuests(), loadCaterers()])
+    Promise.all([loadGuests(), loadCaterers(), loadDuePayments()])
       .catch(() => {})
       .finally(() => setLoading(false));
   };
@@ -186,6 +224,38 @@ const DashboardPage: React.FC = () => {
           {isCaterersTab ? <ChefHat size={15} /> : <UserPlus size={15} />}
           {isCaterersTab ? 'New Caterer' : 'New Guest'}
         </button>
+      </div>
+
+      {/* Due payments */}
+      <div style={{ display: 'flex', gap: '1rem', marginBottom: '1.5rem', flexWrap: 'wrap' }}>
+        <div style={{ flex: '1 1 220px', background: '#fff', border: '1px solid #e5e7eb', borderRadius: 10, boxShadow: '0 1px 3px rgba(0,0,0,0.04)', padding: '1rem 1.25rem', display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+          <div style={{ background: '#fef2f2', color: '#dc2626', borderRadius: 8, padding: '0.55rem', display: 'flex' }}>
+            <IndianRupee size={18} />
+          </div>
+          <div>
+            <p style={{ fontSize: '0.78rem', color: '#6b7280', fontWeight: 500, textTransform: 'uppercase', letterSpacing: '0.03em' }}>Due to Caterers</p>
+            <p style={{ fontSize: '1.15rem', fontWeight: 700, color: '#111827', marginTop: 2 }}>
+              ₹{catererDue.amount.toFixed(2)}
+              <span style={{ fontSize: '0.78rem', fontWeight: 500, color: '#9ca3af', marginLeft: 6 }}>
+                {catererDue.count} unpaid bill{catererDue.count === 1 ? '' : 's'}
+              </span>
+            </p>
+          </div>
+        </div>
+        <div style={{ flex: '1 1 220px', background: '#fff', border: '1px solid #e5e7eb', borderRadius: 10, boxShadow: '0 1px 3px rgba(0,0,0,0.04)', padding: '1rem 1.25rem', display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+          <div style={{ background: '#fef2f2', color: '#dc2626', borderRadius: 8, padding: '0.55rem', display: 'flex' }}>
+            <IndianRupee size={18} />
+          </div>
+          <div>
+            <p style={{ fontSize: '0.78rem', color: '#6b7280', fontWeight: 500, textTransform: 'uppercase', letterSpacing: '0.03em' }}>Due to Caretakers</p>
+            <p style={{ fontSize: '1.15rem', fontWeight: 700, color: '#111827', marginTop: 2 }}>
+              ₹{caretakerDue.amount.toFixed(2)}
+              <span style={{ fontSize: '0.78rem', fontWeight: 500, color: '#9ca3af', marginLeft: 6 }}>
+                {caretakerDue.count} pending reimbursement{caretakerDue.count === 1 ? '' : 's'}
+              </span>
+            </p>
+          </div>
+        </div>
       </div>
 
       {/* Credential card */}
@@ -433,7 +503,7 @@ const DashboardPage: React.FC = () => {
                         fontWeight: 500,
                         ...(BILL_STATUS_STYLE[s.billStatus] || BILL_STATUS_STYLE['No bill']),
                       }}>
-                        {s.billStatus}
+                        {s.billStatus === 'draft' ? 'Draft' : s.billStatus === 'paid' ? 'Paid' : 'No bill'}
                       </span>
                     </td>
                     <td style={{ padding: '0.85rem 1rem', textAlign: 'right' }}>
