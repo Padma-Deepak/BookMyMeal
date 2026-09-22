@@ -521,12 +521,20 @@ const DashboardPage: React.FC = () => {
                           Generate Bill
                         </button>
                         {s.billId && (
-                          <button
-                            onClick={() => navigate(`/manager/bill/${s.billId}`)}
-                            style={{ background: '#fff', border: '1px solid #e5e7eb', color: '#374151', borderRadius: 6, padding: '0.35rem 0.75rem', cursor: 'pointer', fontSize: '0.8rem', minHeight: 34 }}
-                          >
-                            View Bill
-                          </button>
+                          <>
+                            <button
+                              onClick={() => navigate(`/manager/bill/${s.billId}`)}
+                              style={{ background: '#fff', border: '1px solid #e5e7eb', color: '#374151', borderRadius: 6, padding: '0.35rem 0.75rem', cursor: 'pointer', fontSize: '0.8rem', minHeight: 34 }}
+                            >
+                              View Bill
+                            </button>
+                            <button
+                              onClick={() => navigate(`/manager/caterer-bill/${s.billId}`)}
+                              style={{ background: '#fff', border: '1px solid #e5e7eb', color: '#374151', borderRadius: 6, padding: '0.35rem 0.75rem', cursor: 'pointer', fontSize: '0.8rem', minHeight: 34 }}
+                            >
+                              Caterer Bill
+                            </button>
+                          </>
                         )}
                       </div>
                     </td>

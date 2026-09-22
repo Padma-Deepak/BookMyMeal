@@ -234,7 +234,7 @@ const BillingHistoryPage: React.FC = () => {
                 <thead>
                   <tr style={{ background: '#f0ece3', borderBottom: '1px solid #e5e7eb' }}>
                     <th style={{ padding: '0.7rem 1rem', textAlign: 'left', fontSize: '0.78rem', fontWeight: 600, color: '#6b7280', textTransform: 'uppercase', letterSpacing: '0.04em' }}>Bill Date</th>
-                    <th style={{ padding: '0.7rem 0.75rem', textAlign: 'left', fontSize: '0.78rem', fontWeight: 600, color: '#6b7280', textTransform: 'uppercase', letterSpacing: '0.04em' }}>Caterers</th>
+                    <th style={{ padding: '0.7rem 0.75rem', textAlign: 'left', fontSize: '0.78rem', fontWeight: 600, color: '#6b7280', textTransform: 'uppercase', letterSpacing: '0.04em' }}>Caterer</th>
                     <th style={{ padding: '0.7rem 0.75rem', textAlign: 'right', fontSize: '0.78rem', fontWeight: 600, color: '#6b7280', textTransform: 'uppercase', letterSpacing: '0.04em' }}>Amount</th>
                     <th style={{ padding: '0.7rem 0.75rem', textAlign: 'center', fontSize: '0.78rem', fontWeight: 600, color: '#6b7280', textTransform: 'uppercase', letterSpacing: '0.04em' }}>Status</th>
                     <th style={{ padding: '0.7rem 1rem', textAlign: 'right', fontSize: '0.78rem', fontWeight: 600, color: '#6b7280', textTransform: 'uppercase', letterSpacing: '0.04em' }}>Actions</th>
@@ -242,14 +242,13 @@ const BillingHistoryPage: React.FC = () => {
                 </thead>
                 <tbody>
                   {payouts.map((p, i) => {
-                    const caterers = Array.from(new Set(p.items.map(it => it.caterer_name).filter(Boolean)));
                     return (
-                      <tr key={p.id} style={{ borderTop: i > 0 ? '1px solid #f3f4f6' : undefined }}>
+                      <tr key={`${p.id}-${p.caterer_id}`} style={{ borderTop: i > 0 ? '1px solid #f3f4f6' : undefined }}>
                         <td style={{ padding: '0.85rem 1rem', color: '#6b7280', fontSize: '0.875rem' }}>
                           {new Date(p.bill_date).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })}
                         </td>
                         <td style={{ padding: '0.85rem 0.75rem', color: '#374151', fontSize: '0.875rem' }}>
-                          {caterers.length > 0 ? caterers.join(', ') : '—'}
+                          {p.caterer_name || '—'}
                         </td>
                         <td style={{ padding: '0.85rem 0.75rem', textAlign: 'right', fontWeight: 600, color: '#111827' }}>
                           ₹{p.total_caterer_amount.toFixed(2)}
@@ -262,7 +261,7 @@ const BillingHistoryPage: React.FC = () => {
                         <td style={{ padding: '0.85rem 1rem', textAlign: 'right' }}>
                           <div style={{ display: 'flex', gap: '0.4rem', justifyContent: 'flex-end', flexWrap: 'wrap' }}>
                             <button
-                              onClick={() => navigate(`/manager/bill/${p.id}`)}
+                              onClick={() => navigate(`/manager/caterer-bill/${p.id}`)}
                               style={{ background: '#1a3c2c', color: '#fff', border: 'none', borderRadius: 6, padding: '0.3rem 0.7rem', cursor: 'pointer', fontSize: '0.8rem', fontWeight: 500, minHeight: 32 }}
                             >
                               View / Pay

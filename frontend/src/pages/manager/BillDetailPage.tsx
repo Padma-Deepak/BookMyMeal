@@ -1,6 +1,6 @@
 import React, { useEffect, useState, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { MessageCircle, Download, Upload, CheckCircle } from 'lucide-react';
+import { MessageCircle, Download, CheckCircle } from 'lucide-react';
 import Layout from '../../components/Layout';
 import { apiGet, apiFetch } from '../../lib/api';
 import type { Bill, ExternalPurchase } from '../../types';
@@ -11,10 +11,8 @@ const BillDetailPage: React.FC = () => {
   const [bill, setBill] = useState<Bill | null>(null);
   const [loading, setLoading] = useState(true);
   const [approving, setApproving] = useState(false);
-  const [uploadingCatererProof, setUploadingCatererProof] = useState(false);
   const [reimbursing, setReimbursing] = useState<string | null>(null);
   const screenshotRef = useRef<HTMLInputElement>(null);
-  const catererScreenshotRef = useRef<HTMLInputElement>(null);
   const proofRefs = useRef<Record<string, HTMLInputElement | null>>({});
 
   const fetchBill = () => {
@@ -37,20 +35,6 @@ const BillDetailPage: React.FC = () => {
     await apiFetch(`/bills/${billId}/`, { method: 'PATCH', body: fd });
     await fetchBill();
     setApproving(false);
-  };
-
-  const handleUploadCatererProof = async () => {
-    if (!catererScreenshotRef.current?.files?.[0]) {
-      alert('Please select a file first.');
-      return;
-    }
-    setUploadingCatererProof(true);
-    const fd = new FormData();
-    fd.append('bill_id', billId!);
-    fd.append('screenshot', catererScreenshotRef.current.files[0]);
-    await apiFetch('/bill-payments/', { method: 'POST', body: fd });
-    setUploadingCatererProof(false);
-    alert('Caterer payment proof uploaded.');
   };
 
   const handleReimburse = async (ep: ExternalPurchase) => {
@@ -312,23 +296,6 @@ const BillDetailPage: React.FC = () => {
           </div>
         </div>
       )}
-
-      {/* Caterer payment proof */}
-      <div style={{ ...sectionCard, padding: '1.25rem' }}>
-        <h3 style={{ fontSize: '0.9rem', fontWeight: 600, marginBottom: '0.875rem', display: 'flex', alignItems: 'center', gap: '0.4rem', color: '#111827' }}>
-          <Upload size={16} color="#6b7280" /> Upload Caterer Payment Proof
-        </h3>
-        <div style={{ display: 'flex', gap: '0.875rem', alignItems: 'flex-end', flexWrap: 'wrap' }}>
-          <input ref={catererScreenshotRef} type="file" accept="image/*" style={{ fontSize: '0.82rem', color: '#374151' }} />
-          <button
-            onClick={handleUploadCatererProof}
-            disabled={uploadingCatererProof}
-            style={{ background: uploadingCatererProof ? '#e5e7eb' : '#1a3c2c', color: uploadingCatererProof ? '#9ca3af' : '#fff', border: 'none', borderRadius: 7, padding: '0.55rem 1.25rem', cursor: uploadingCatererProof ? 'not-allowed' : 'pointer', fontWeight: 600, fontSize: '0.875rem', minHeight: 40 }}
-          >
-            {uploadingCatererProof ? 'Uploading…' : 'Upload Proof'}
-          </button>
-        </div>
-      </div>
     </Layout>
   );
 };

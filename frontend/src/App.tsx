@@ -30,6 +30,7 @@ import ManagerDashboardPage from './pages/manager/DashboardPage';
 import GuestOrdersPage from './pages/manager/GuestOrdersPage';
 import GenerateBillPage from './pages/manager/GenerateBillPage';
 import BillDetailPage from './pages/manager/BillDetailPage';
+import CatererBillDetailPage from './pages/manager/CatererBillDetailPage';
 import BillingHistoryPage from './pages/manager/BillingHistoryPage';
 
 // Superuser
@@ -157,6 +158,11 @@ function App() {
             <Route path="/manager/bill/:billId" element={
               <ProtectedRoute allowedRoles={['manager', 'superuser']}>
                 <BillDetailPage />
+              </ProtectedRoute>
+            } />
+            <Route path="/manager/caterer-bill/:billId" element={
+              <ProtectedRoute allowedRoles={['manager', 'superuser']}>
+                <CatererBillDetailPage />
               </ProtectedRoute>
             } />
 

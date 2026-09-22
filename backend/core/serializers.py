@@ -336,6 +336,10 @@ class CatererOrderSerializer(serializers.ModelSerializer):
 
 
 class CatererBillSerializer(serializers.ModelSerializer):
+    """Serializes a Bill scoped to ONE caterer's share of it — items, amount,
+    and payment status all cover only that caterer's items on this bill. A
+    bill can include multiple caterers (e.g. breakfast from one, dinner from
+    another); each is billed and paid independently."""
     bill_date = serializers.DateTimeField(source='created_at', read_only=True)
     is_paid = serializers.SerializerMethodField()
     items = serializers.SerializerMethodField()
@@ -343,26 +347,47 @@ class CatererBillSerializer(serializers.ModelSerializer):
     payment_proof_url = serializers.SerializerMethodField()
     stay_start = serializers.SerializerMethodField()
     stay_end = serializers.SerializerMethodField()
+    caterer_id = serializers.SerializerMethodField()
+    caterer_name = serializers.SerializerMethodField()
 
     class Meta:
         model = Bill
         fields = [
             'id', 'bill_date', 'stay_start', 'stay_end',
             'items', 'total_caterer_amount', 'is_paid', 'payment_proof_url',
+            'caterer_id', 'caterer_name',
         ]
 
-    def _caterer_filter(self, obj):
-        """Return the caterer user if the requester is a caterer, else None (manager sees all)."""
+    def _target_caterer(self, obj):
+        """The caterer this row is scoped to. The view sets `obj._target_caterer`
+        explicitly for manager/superuser rows (one row per (bill, caterer) pair);
+        for a caterer viewing their own bills, it's simply themself."""
+        direct = getattr(obj, '_target_caterer', None)
+        if direct is not None:
+            return direct
         user = self.context.get('request').user if self.context.get('request') else None
         return user if user and user.role == 'caterer' else None
 
+    def get_caterer_id(self, obj):
+        caterer = self._target_caterer(obj)
+        return str(caterer.id) if caterer else None
+
+    def get_caterer_name(self, obj):
+        caterer = self._target_caterer(obj)
+        return caterer.username if caterer else None
+
     def get_is_paid(self, obj):
-        # Whether the FACILITY has paid the caterer(s) for this bill (caterer payment
-        # proof uploaded) — distinct from the guest's own payment status on `obj.status`.
-        return obj.caterer_payments.exists()
+        # Whether the FACILITY has paid THIS caterer for their items on this bill —
+        # distinct from the guest's own payment status on `obj.status`, and independent
+        # of whether other caterers on the same bill have been paid.
+        caterer = self._target_caterer(obj)
+        qs = obj.caterer_payments.all()
+        if caterer:
+            qs = qs.filter(caterer=caterer)
+        return qs.exists()
 
     def get_items(self, obj):
-        caterer = self._caterer_filter(obj)
+        caterer = self._target_caterer(obj)
         result = []
         for order in obj.orders.prefetch_related('items__menu_item__caterer').all():
             for item in order.items.select_related('menu_item__caterer').all():
@@ -379,7 +404,7 @@ class CatererBillSerializer(serializers.ModelSerializer):
         return result
 
     def get_total_caterer_amount(self, obj):
-        caterer = self._caterer_filter(obj)
+        caterer = self._target_caterer(obj)
         total = 0.0
         for order in obj.orders.prefetch_related('items__menu_item').all():
             for item in order.items.select_related('menu_item').all():
@@ -389,7 +414,11 @@ class CatererBillSerializer(serializers.ModelSerializer):
         return total
 
     def get_payment_proof_url(self, obj):
-        payment = obj.caterer_payments.order_by('-created_at').first()
+        caterer = self._target_caterer(obj)
+        qs = obj.caterer_payments.all()
+        if caterer:
+            qs = qs.filter(caterer=caterer)
+        payment = qs.order_by('-created_at').first()
         if payment and payment.screenshot:
             request = self.context.get('request')
             return request.build_absolute_uri(payment.screenshot.url) if request else payment.screenshot.url
@@ -409,8 +438,20 @@ class CatererBillSerializer(serializers.ModelSerializer):
 class BillPaymentSerializer(serializers.ModelSerializer):
     class Meta:
         model = BillPayment
-        fields = ['id', 'bill', 'screenshot', 'created_at']
+        fields = ['id', 'bill', 'caterer', 'screenshot', 'created_at']
         read_only_fields = ['id', 'created_at', 'uploaded_by']
+
+    def validate_caterer(self, value):
+        if value.role != 'caterer':
+            raise serializers.ValidationError('Selected user is not a caterer.')
+        return value
+
+    def validate(self, attrs):
+        bill = attrs.get('bill')
+        caterer = attrs.get('caterer')
+        if bill and caterer and not bill.orders.filter(items__menu_item__caterer=caterer).exists():
+            raise serializers.ValidationError({'caterer': 'This caterer has no items on this bill.'})
+        return attrs
 
     def create(self, validated_data):
         validated_data['uploaded_by'] = self.context['request'].user

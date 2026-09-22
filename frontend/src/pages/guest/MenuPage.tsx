@@ -7,6 +7,7 @@ import { apiGet } from '../../lib/api';
 import type { MenuItem } from '../../types';
 import { SPICY_LEVELS, CATEGORY_LABELS } from '../../types';
 import { isWithinNoticePeriod, formatNotice } from '../../lib/notice';
+import { isWithinCategoryWindow, formatCategoryWindow } from '../../lib/categoryWindow';
 
 const BRAND = '#1a3c2c';
 const BRAND_DARK = '#122e21';
@@ -36,6 +37,7 @@ const MenuPage: React.FC = () => {
   const [quantities, setQuantities] = useState<Record<string, number>>({});
   const [spicyLevels, setSpicyLevels] = useState<Record<string, string>>({});
   const [brokenImages, setBrokenImages] = useState<Record<string, boolean>>({});
+  const [orderErrors, setOrderErrors] = useState<Record<string, string>>({});
   const { addItem, updateItem, removeItem, items: cartItems } = useCart();
   const navigate = useNavigate();
 
@@ -57,6 +59,22 @@ const MenuPage: React.FC = () => {
   const totalCartQty = cartItems.reduce((sum, i) => sum + i.quantity, 0);
 
   const handleAddToCart = (item: MenuItem) => {
+    if (!isWithinCategoryWindow(item.category)) {
+      const label = CATEGORY_LABELS[item.category] ?? item.category;
+      const window = formatCategoryWindow(item.category);
+      setOrderErrors(e => ({
+        ...e,
+        [item.id]: `${label} can only be ordered between ${window}. It's outside that time frame right now.`,
+      }));
+      return;
+    }
+    if (orderErrors[item.id]) {
+      setOrderErrors(e => {
+        const next = { ...e };
+        delete next[item.id];
+        return next;
+      });
+    }
     const qty = quantities[item.id] || 1;
     const spicy = spicyLevels[item.id] || 'None';
     addItem({
@@ -241,6 +259,12 @@ const MenuPage: React.FC = () => {
               <span style={{ fontSize: '0.8rem', color: '#9ca3af', fontWeight: 500 }}>
                 {grouped[category].length} {grouped[category].length === 1 ? 'item' : 'items'}
               </span>
+              {formatCategoryWindow(category) && (
+                <span style={{ fontSize: '0.8rem', color: '#9ca3af', fontWeight: 500, display: 'flex', alignItems: 'center', gap: '0.3rem' }}>
+                  <Clock size={12} />
+                  Orderable {formatCategoryWindow(category)}
+                </span>
+              )}
             </div>
 
             <div className="bmm-grid">
@@ -408,6 +432,12 @@ const MenuPage: React.FC = () => {
                             >
                               Add to Order
                             </button>
+                          )}
+
+                          {orderErrors[item.id] && (
+                            <p style={{ color: '#dc2626', fontSize: '0.8rem', marginTop: '0.4rem' }}>
+                              {orderErrors[item.id]}
+                            </p>
                           )}
                         </>
                       )}

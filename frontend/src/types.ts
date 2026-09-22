@@ -109,6 +109,16 @@ export interface PayoutRecord {
   total_caterer_amount: number;
   is_paid: boolean;
   payment_proof_url?: string;
+  caterer_id?: string;
+  caterer_name?: string;
+}
+
+// Manager/superuser view of GET /caterer-bills/<id>/ — one row per caterer
+// with items on this bill, each independently payable.
+export interface CatererBillBreakdown {
+  id: string;
+  bill_date: string;
+  caterers: PayoutRecord[];
 }
 
 export interface Bill {

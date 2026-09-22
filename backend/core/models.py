@@ -27,6 +27,15 @@ CATEGORY_CHOICES = [
     ('beverage', 'Beverage'),
 ]
 
+# Meal categories can only be ordered within their time-of-day window
+# (start_hour, end_hour), both in 24h clock, end exclusive. Categories not
+# listed here (snacks, beverage) have no time restriction.
+CATEGORY_TIME_WINDOWS = {
+    'breakfast': (7, 10),    # 7:00 AM – 10:00 AM
+    'lunch': (12, 15),       # 12:00 PM – 3:00 PM
+    'dinner': (19, 22),      # 7:00 PM – 10:00 PM
+}
+
 SPICY_CHOICES = [
     ('None', 'None'),
     ('Mild', 'Mild'),
@@ -205,8 +214,15 @@ class Bill(models.Model):
 
 
 class BillPayment(models.Model):
+    """Proof that the facility paid ONE caterer for their share of a bill.
+    A bill can include items from multiple caterers (e.g. breakfast from one,
+    dinner from another) — each is paid and tracked independently."""
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     bill = models.ForeignKey(Bill, on_delete=models.CASCADE, related_name='caterer_payments')
+    caterer = models.ForeignKey(
+        User, on_delete=models.CASCADE, related_name='received_payments',
+        limit_choices_to={'role': 'caterer'}, null=True,
+    )
     screenshot = models.FileField(upload_to='caterer_payments/')
     uploaded_by = models.ForeignKey(
         User, on_delete=models.SET_NULL, null=True, blank=True,
@@ -215,7 +231,7 @@ class BillPayment(models.Model):
     created_at = models.DateTimeField(auto_now_add=True)
 
     def __str__(self):
-        return f"Payment proof for Bill {str(self.bill_id)[:8]}"
+        return f"Payment proof for Bill {str(self.bill_id)[:8]} → {self.caterer.username}"
 
 
 class Notification(models.Model):

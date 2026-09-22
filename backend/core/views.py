@@ -8,9 +8,12 @@ from rest_framework.permissions import IsAuthenticated
 from rest_framework.exceptions import ValidationError
 from rest_framework_simplejwt.views import TokenObtainPairView
 
+from django.utils import timezone
+
 from .models import (
     User, MenuItem, Order, Vendor,
     ExternalPurchase, Bill, BillPayment, Notification,
+    CATEGORY_TIME_WINDOWS,
 )
 from .serializers import (
     MyTokenObtainPairSerializer, UserSerializer,
@@ -37,6 +40,34 @@ def _validate_single_category(items_data):
         raise ValidationError({
             'items': 'An order can only contain items from one meal category. Please submit separate orders.'
         })
+
+
+def _format_hour(hour):
+    suffix = 'AM' if hour < 12 else 'PM'
+    display_hour = hour % 12 or 12
+    return f"{display_hour}:00 {suffix}"
+
+
+def _validate_category_time_window(items_data):
+    """Guest-initiated writes only: breakfast/lunch/dinner items can only be
+    ordered within their meal's time-of-day window (see CATEGORY_TIME_WINDOWS).
+    Categories with no configured window (snacks, beverage) are unrestricted."""
+    menu_item_ids = [i['menu_item_id'] for i in items_data]
+    categories = set(MenuItem.objects.filter(id__in=menu_item_ids).values_list('category', flat=True))
+    now = timezone.localtime()
+    for category in categories:
+        window = CATEGORY_TIME_WINDOWS.get(category)
+        if window is None:
+            continue
+        start_hour, end_hour = window
+        if not (start_hour <= now.hour < end_hour):
+            raise ValidationError({
+                'items': (
+                    f"{category.capitalize()} can only be ordered between "
+                    f"{_format_hour(start_hour)} and {_format_hour(end_hour)}. "
+                    f"It's currently outside that time frame."
+                )
+            })
 
 
 # ─── Auth ─────────────────────────────────────────────────────────────────────
@@ -173,6 +204,7 @@ class OrderListCreateView(generics.ListCreateAPIView):
             from rest_framework.exceptions import PermissionDenied
             raise PermissionDenied("Only guests can place orders.")
         _validate_single_category(serializer.validated_data['items'])
+        _validate_category_time_window(serializer.validated_data['items'])
         order = serializer.save()
         # Notify caterers whose items are in this order (PRD §4.2.2)
         caterer_ids = (
@@ -303,6 +335,7 @@ class OrderDetailView(generics.RetrieveUpdateDestroyAPIView):
                 return Response({'detail': 'No editable fields provided.'}, status=400)
             if 'items' in data:
                 _validate_single_category(data['items'])
+                _validate_category_time_window(data['items'])
             serializer = self.get_serializer(order, data=data, partial=True)
             serializer.is_valid(raise_exception=True)
             serializer.save()
@@ -521,8 +554,23 @@ class BillPaymentView(generics.CreateAPIView):
 
 # ─── Caterer Bills ────────────────────────────────────────────────────────────
 
+def _caterers_on_bill(bill):
+    """Distinct caterer Users with at least one item on this bill."""
+    caterer_ids = set()
+    for order in bill.orders.prefetch_related('items__menu_item__caterer').all():
+        for item in order.items.all():
+            caterer_ids.add(item.menu_item.caterer_id)
+    return User.objects.filter(id__in=caterer_ids)
+
+
 class CatererBillListView(generics.ListAPIView):
-    """GET /api/caterer-bills/ — list of bills relevant to the caterer (payout history)."""
+    """
+    GET /api/caterer-bills/ — payout history.
+    Caterer: one row per bill, scoped to their own items/amount/payment status.
+    Manager/superuser: one row per (bill, caterer) pair — a bill spanning
+    multiple caterers (e.g. breakfast from one, dinner from another) produces
+    a separate, independently payable row for each.
+    """
     serializer_class = CatererBillSerializer
     permission_classes = [IsAuthenticated]
 
@@ -534,10 +582,30 @@ class CatererBillListView(generics.ListAPIView):
             return Bill.objects.filter(orders__items__menu_item__caterer=user).distinct()
         from rest_framework.exceptions import PermissionDenied
         raise PermissionDenied("Access denied.")
+
+    def list(self, request, *args, **kwargs):
+        user = request.user
+        bills = self.filter_queryset(self.get_queryset())
+        rows = []
+        if user.role == 'caterer':
+            for bill in bills:
+                rows.append(self.get_serializer(bill).data)
+        else:
+            for bill in bills:
+                for caterer in _caterers_on_bill(bill):
+                    bill._target_caterer = caterer
+                    rows.append(self.get_serializer(bill).data)
+        return Response(rows)
 
 
 class CatererBillDetailView(generics.RetrieveAPIView):
-    """GET /api/caterer-bills/<uuid>/ — caterer-side view (uses caterer_price)."""
+    """
+    GET /api/caterer-bills/<uuid>/
+    Caterer: their own scoped view of this bill (uses caterer_price).
+    Manager/superuser: full per-caterer breakdown — every caterer with items
+    on this bill, each with independent items/amount/payment status, so the
+    manager can pay each one separately.
+    """
     serializer_class = CatererBillSerializer
     permission_classes = [IsAuthenticated]
 
@@ -549,6 +617,20 @@ class CatererBillDetailView(generics.RetrieveAPIView):
             return Bill.objects.filter(orders__items__menu_item__caterer=user).distinct()
         from rest_framework.exceptions import PermissionDenied
         raise PermissionDenied("Access denied.")
+
+    def retrieve(self, request, *args, **kwargs):
+        bill = self.get_object()
+        if request.user.role == 'caterer':
+            return Response(self.get_serializer(bill).data)
+        caterer_rows = []
+        for caterer in _caterers_on_bill(bill):
+            bill._target_caterer = caterer
+            caterer_rows.append(self.get_serializer(bill).data)
+        return Response({
+            'id': str(bill.id),
+            'bill_date': bill.created_at.isoformat(),
+            'caterers': caterer_rows,
+        })
 
 
 class CatererBillPDFView(APIView):
