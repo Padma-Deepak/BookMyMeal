@@ -5,6 +5,7 @@ import ProtectedRoute from './components/ProtectedRoute';
 
 import LoginPage from './pages/LoginPage';
 import UnauthorizedPage from './pages/UnauthorizedPage';
+import LandingPage from './pages/LandingPage';
 
 // Guest
 import MenuPage from './pages/guest/MenuPage';
@@ -41,8 +42,9 @@ import AccountsPage from './pages/superuser/AccountsPage';
 import ChangePasswordPage from './pages/ChangePasswordPage';
 
 const RoleRedirect = () => {
-  const { user } = useAuth();
-  if (!user) return <Navigate to="/login" replace />;
+  const { user, isLoading } = useAuth();
+  if (isLoading) return null;
+  if (!user) return <LandingPage />;
   switch (user.role) {
     case 'guest':      return <Navigate to="/guest/menu" replace />;
     case 'caterer':    return <Navigate to="/caterer/orders" replace />;
