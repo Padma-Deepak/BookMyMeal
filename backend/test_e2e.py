@@ -13,8 +13,11 @@ Covers:
   8. History/audit logs per role
   9. Edge cases: duplicate bill, wrong role access, bad order data, etc.
 """
-import json, sys, uuid, io
-import urllib.request, urllib.error
+import json
+import sys
+import urllib.error
+import urllib.request
+import uuid
 
 # Force UTF-8 output on Windows
 if hasattr(sys.stdout, 'reconfigure'):
@@ -667,7 +670,7 @@ if BILL_ID:
         with urllib.request.urlopen(rq) as r:
             content_type = r.headers.get("Content-Type", "")
             if "pdf" in content_type:
-                print(f"  [PASS] GET /bills/<id>/pdf/ returns PDF")
+                print("  [PASS] GET /bills/<id>/pdf/ returns PDF")
                 PASS.append("Bill PDF endpoint returns PDF")
             else:
                 print(f"  [PASS] GET /bills/<id>/pdf/ reachable (Content-Type: {content_type})")

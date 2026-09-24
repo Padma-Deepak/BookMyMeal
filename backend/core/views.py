@@ -1,33 +1,45 @@
 from django.db.models import ProtectedError
 from django.http import HttpResponse
 from django.shortcuts import get_object_or_404
+from django.utils import timezone
 from rest_framework import generics, status
+from rest_framework.exceptions import ValidationError
+from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
-from rest_framework.permissions import IsAuthenticated
-from rest_framework.exceptions import ValidationError
 from rest_framework_simplejwt.views import TokenObtainPairView
 
-from django.utils import timezone
-
 from .models import (
-    User, MenuItem, Order, Vendor,
-    ExternalPurchase, Bill, BillPayment, Notification,
     CATEGORY_TIME_WINDOWS,
-)
-from .serializers import (
-    MyTokenObtainPairSerializer, UserSerializer,
-    MenuItemSerializer, OrderSerializer,
-    VendorSerializer, ExternalPurchaseSerializer,
-    BillSerializer, CatererBillSerializer,
-    BillPaymentSerializer, NotificationSerializer,
+    Bill,
+    BillPayment,
+    ExternalPurchase,
+    MenuItem,
+    Notification,
+    Order,
+    User,
+    Vendor,
 )
 from .permissions import (
-    IsManagerOrAbove, IsCatererOrSuperuser, IsCaretakerOrSuperuser,
-    IsSuperuser, IsCatererOwnerOrSuperuser,
+    IsCaretakerOrSuperuser,
+    IsCatererOrSuperuser,
+    IsCatererOwnerOrSuperuser,
+    IsManagerOrAbove,
+    IsSuperuser,
 )
-from .state_machine import validate_transition, InvalidTransition
-
+from .serializers import (
+    BillPaymentSerializer,
+    BillSerializer,
+    CatererBillSerializer,
+    ExternalPurchaseSerializer,
+    MenuItemSerializer,
+    MyTokenObtainPairSerializer,
+    NotificationSerializer,
+    OrderSerializer,
+    UserSerializer,
+    VendorSerializer,
+)
+from .state_machine import InvalidTransition, validate_transition
 
 # ─── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -752,11 +764,12 @@ def generate_bill_pdf(bill, mode='guest'):
     Falls back to plain text if reportlab is not installed.
     """
     try:
+        import io
+
+        from reportlab.lib import colors
         from reportlab.lib.pagesizes import A4
         from reportlab.lib.units import cm
         from reportlab.pdfgen import canvas
-        from reportlab.lib import colors
-        import io
 
         buffer = io.BytesIO()
         p = canvas.Canvas(buffer, pagesize=A4)

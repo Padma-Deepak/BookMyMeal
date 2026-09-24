@@ -1,13 +1,20 @@
-import uuid
 from decimal import Decimal
+
+from django.conf import settings as django_settings
+from django.db import transaction
 from rest_framework import serializers
 from rest_framework_simplejwt.serializers import TokenObtainPairSerializer
-from django.db import transaction
-from django.conf import settings as django_settings
 
 from .models import (
-    User, MenuItem, Order, OrderItem, Vendor,
-    ExternalPurchase, Bill, BillPayment, Notification,
+    Bill,
+    BillPayment,
+    ExternalPurchase,
+    MenuItem,
+    Notification,
+    Order,
+    OrderItem,
+    User,
+    Vendor,
 )
 
 
@@ -73,7 +80,7 @@ class MenuItemSerializer(serializers.ModelSerializer):
     def _apply_markup(self, validated_data):
         if 'caterer_price' in validated_data:
             markup = getattr(django_settings, 'PRICE_MARKUP_PERCENTAGE', 20)
-            factor = Decimal('1') + Decimal(str(markup)) / Decimal('100')
+            factor = Decimal(1) + Decimal(str(markup)) / Decimal(100)
             validated_data['customer_price'] = validated_data['caterer_price'] * factor
 
     def create(self, validated_data):
@@ -281,12 +288,12 @@ class BillSerializer(serializers.ModelSerializer):
              for order in obj.orders.prefetch_related('items').all()
              for item in order.items.all()
              if not item.is_complimentary),
-            Decimal('0')
+            Decimal(0)
         )
         ext_sub = sum(
             (ep.cost
              for ep in ExternalPurchase.objects.filter(bill=obj, is_paid_by_caretaker=False)),
-            Decimal('0')
+            Decimal(0)
         )
         subtotal = orders_sub + ext_sub
         # Calculation above is exact Decimal arithmetic on snapshotted prices;
@@ -295,7 +302,7 @@ class BillSerializer(serializers.ModelSerializer):
         if obj.discount_amount and obj.discount_amount > 0:
             return float(subtotal - obj.discount_amount)
         if obj.discount_percentage and obj.discount_percentage > 0:
-            return float(subtotal - subtotal * obj.discount_percentage / Decimal('100'))
+            return float(subtotal - subtotal * obj.discount_percentage / Decimal(100))
         return float(subtotal)
 
     def get_pdf_url(self, obj):
@@ -427,7 +434,7 @@ class CatererBillSerializer(serializers.ModelSerializer):
 
     def get_total_caterer_amount(self, obj):
         caterer = self._target_caterer(obj)
-        total = Decimal('0')
+        total = Decimal(0)
         for order in obj.orders.prefetch_related('items__menu_item').all():
             for item in order.items.select_related('menu_item').all():
                 if caterer and item.menu_item.caterer_id != caterer.id:

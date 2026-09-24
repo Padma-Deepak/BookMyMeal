@@ -2,16 +2,28 @@ from django.urls import path
 from rest_framework_simplejwt.views import TokenRefreshView
 
 from .views import (
-    MyTokenObtainPairView, UserDetailView, UserListView,
-    ChangePasswordView, SetUserPasswordView,
-    MenuItemListCreateView, MenuItemDetailView,
-    OrderListCreateView, OrderDetailView,
-    ExternalPurchaseListCreateView, ExternalPurchaseDetailView,
-    VendorListView, VendorDetailView,
-    BillListCreateView, BillDetailView, BillPDFView,
+    BillDetailView,
+    BillListCreateView,
     BillPaymentView,
-    CatererBillListView, CatererBillDetailView, CatererBillPDFView,
-    NotificationListView, NotificationMarkReadView,
+    BillPDFView,
+    CatererBillDetailView,
+    CatererBillListView,
+    CatererBillPDFView,
+    ChangePasswordView,
+    ExternalPurchaseDetailView,
+    ExternalPurchaseListCreateView,
+    MenuItemDetailView,
+    MenuItemListCreateView,
+    MyTokenObtainPairView,
+    NotificationListView,
+    NotificationMarkReadView,
+    OrderDetailView,
+    OrderListCreateView,
+    SetUserPasswordView,
+    UserDetailView,
+    UserListView,
+    VendorDetailView,
+    VendorListView,
 )
 
 urlpatterns = [

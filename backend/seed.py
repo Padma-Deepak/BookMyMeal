@@ -3,13 +3,16 @@ Run with: python manage.py shell < seed.py
 Creates one user per role + menu items + orders + external purchase.
 """
 import os
+
 os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'bookmymeal.settings')
 
 import django
+
 django.setup()
 
 from django.contrib.auth import get_user_model
-from core.models import MenuItem, Order, OrderItem, ExternalPurchase, Vendor, Bill
+
+from core.models import Bill, ExternalPurchase, MenuItem, Order, OrderItem, Vendor
 
 User = get_user_model()
 
@@ -31,7 +34,7 @@ superuser = User.objects.create_superuser(
     role='superuser',
     phone_number='+919999900000',
 )
-print(f"  superuser  : padma / admin123")
+print("  superuser  : padma / admin123")
 
 manager = User.objects.create_user(
     username='manager1',
@@ -40,7 +43,7 @@ manager = User.objects.create_user(
     role='manager',
     phone_number='+919999911111',
 )
-print(f"  manager    : manager1 / manager123")
+print("  manager    : manager1 / manager123")
 
 caterer = User.objects.create_user(
     username='caterer1',
@@ -49,7 +52,7 @@ caterer = User.objects.create_user(
     role='caterer',
     phone_number='+919999922222',
 )
-print(f"  caterer    : caterer1 / caterer123")
+print("  caterer    : caterer1 / caterer123")
 
 caretaker = User.objects.create_user(
     username='caretaker1',
@@ -58,7 +61,7 @@ caretaker = User.objects.create_user(
     role='caretaker',
     phone_number='+919999933333',
 )
-print(f"  caretaker  : caretaker1 / caretaker123")
+print("  caretaker  : caretaker1 / caretaker123")
 
 guest = User.objects.create_user(
     username='guest1',
@@ -67,7 +70,7 @@ guest = User.objects.create_user(
     role='guest',
     phone_number='+919876543210',
 )
-print(f"  guest      : guest1 / guest123")
+print("  guest      : guest1 / guest123")
 
 print("\n=== Creating menu items ===")
 
@@ -134,7 +137,7 @@ OrderItem.objects.bulk_create([
     mk_item(order1, chai,  2, 'None'),
     mk_item(order1, idli,  1, 'None'),
 ])
-print(f"  Order 1 (accepted)  : 2x Masala Dosa (Mild) + 2x Morning Chai + 1x Idli Sambar")
+print("  Order 1 (accepted)  : 2x Masala Dosa (Mild) + 2x Morning Chai + 1x Idli Sambar")
 
 # Order 2: prepared (also eligible for billing)
 order2 = Order.objects.create(guest=guest, status='prepared', allergy_notes='')
@@ -142,7 +145,7 @@ OrderItem.objects.bulk_create([
     mk_item(order2, dal,    1, 'Medium'),
     mk_item(order2, paneer, 1, 'Mild'),
 ])
-print(f"  Order 2 (prepared)  : 1x Dal Makhani (Medium) + 1x Paneer Butter Masala (Mild)")
+print("  Order 2 (prepared)  : 1x Dal Makhani (Medium) + 1x Paneer Butter Masala (Mild)")
 
 # Order 3: pending (not yet approved)
 order3 = Order.objects.create(guest=guest, status='pending', allergy_notes='Extra spicy')
@@ -150,7 +153,7 @@ OrderItem.objects.bulk_create([
     mk_item(order3, fried_rice, 2, 'Hot'),
     mk_item(order3, samosa,     4, 'None'),
 ])
-print(f"  Order 3 (pending)   : 2x Veg Fried Rice (Hot) + 4x Samosa")
+print("  Order 3 (pending)   : 2x Veg Fried Rice (Hot) + 4x Samosa")
 
 # Order 4: rejected (caretaker needs to handle)
 order4 = Order.objects.create(
@@ -162,7 +165,7 @@ order4 = Order.objects.create(
 OrderItem.objects.bulk_create([
     mk_item(order4, biryani, 1, 'Medium'),
 ])
-print(f"  Order 4 (rejected)  : 1x Chicken Biryani — reason: ingredients_unavailable")
+print("  Order 4 (rejected)  : 1x Chicken Biryani — reason: ingredients_unavailable")
 
 print("\n=== Creating vendor + external purchase ===")
 

@@ -1,6 +1,8 @@
 """API smoke tests — run: python test_api.py"""
-import json, sys
-import urllib.request, urllib.error
+import json
+import sys
+import urllib.error
+import urllib.request
 
 BASE = "http://127.0.0.1:8000/api"
 PASS = []
@@ -105,7 +107,7 @@ if caterer_orders and caterer_orders:
     pending_id = caterer_orders[0]["id"]
     approved = req("PATCH", f"/orders/{pending_id}/",
                    {"status": "accepted"},
-                   token=CATERER_TOK, label=f"PATCH order -> accepted (caterer)")
+                   token=CATERER_TOK, label="PATCH order -> accepted (caterer)")
     if approved:
         print(f"         order status after patch: {approved['status']}")
 
@@ -180,7 +182,7 @@ try:
         FAIL.append(("Guest /vendors/ should 403", 0, ""))
 except urllib.error.HTTPError as e:
     if e.code == 403:
-        print(f"  [PASS] Guest correctly blocked from /vendors/ (403)")
+        print("  [PASS] Guest correctly blocked from /vendors/ (403)")
         PASS.append("Guest /vendors/ 403")
     else:
         print(f"  [FAIL] Guest /vendors/ returned {e.code}, expected 403")
@@ -194,7 +196,7 @@ try:
         FAIL.append(("Unauth /orders/ should 401", 0, ""))
 except urllib.error.HTTPError as e:
     if e.code == 401:
-        print(f"  [PASS] Unauthenticated request blocked (401)")
+        print("  [PASS] Unauthenticated request blocked (401)")
         PASS.append("Unauth 401")
     else:
         print(f"  [FAIL] Unauthenticated returned {e.code}, expected 401")
