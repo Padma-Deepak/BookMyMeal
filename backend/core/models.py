@@ -110,15 +110,22 @@ class Order(models.Model):
     @property
     def is_editable(self):
         """Guest can still edit/cancel: status is still 'pending' AND no item's
-        notice_period_minutes exceeds the minutes remaining until midnight."""
+        notice_period_minutes exceeds the minutes remaining until midnight.
+
+        Deliberately iterates self.items.all() in Python rather than issuing a
+        filtered .exists() query: when the caller has prefetch_related('items__
+        menu_item') (as OrderListCreateView/OrderDetailView do), this reads
+        from the prefetch cache instead of firing one extra query per order.
+        """
         if self.status != 'pending':
             return False
         from django.utils import timezone
         now = timezone.localtime()
         minutes_until_midnight = (23 - now.hour) * 60 + (59 - now.minute)
-        return not self.items.filter(
-            menu_item__notice_period_minutes__gt=minutes_until_midnight
-        ).exists()
+        return not any(
+            item.menu_item.notice_period_minutes > minutes_until_midnight
+            for item in self.items.all()
+        )
 
 
 class OrderItem(models.Model):
@@ -127,6 +134,13 @@ class OrderItem(models.Model):
     menu_item = models.ForeignKey(MenuItem, on_delete=models.PROTECT, related_name='order_items')
     quantity = models.PositiveIntegerField(default=1)
     spicy_level = models.CharField(max_length=10, choices=SPICY_CHOICES, default='None')
+    # Snapshot of MenuItem pricing/complimentary status AT ORDER CREATION TIME.
+    # Billing must always read these, never the live MenuItem, so that a later
+    # price change or complimentary toggle can't retroactively alter historical
+    # orders/bills (including already-paid ones).
+    unit_price = models.DecimalField(max_digits=8, decimal_places=2, default=0)
+    caterer_unit_price = models.DecimalField(max_digits=8, decimal_places=2, default=0)
+    is_complimentary = models.BooleanField(default=False)
 
     def __str__(self):
         return f"{self.menu_item.name} x{self.quantity}"
