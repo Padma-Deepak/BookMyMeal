@@ -66,6 +66,13 @@ const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
     navigate('/login');
   };
 
+  const handleSwitchPersona = () => {
+    logout();
+    // Hard navigation avoids a race with ProtectedRoute's own redirect-to-login
+    // effect, which also fires when auth state clears on the page being left.
+    window.location.assign('/');
+  };
+
   return (
     <div style={{ minHeight: '100vh', background: '#f0ece3' }}>
       <nav style={{
@@ -160,6 +167,21 @@ const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
                 </span>
               </span>
 
+              <button
+                onClick={handleSwitchPersona}
+                style={{
+                  background: 'none',
+                  border: '1px solid #e5e7eb',
+                  borderRadius: 6,
+                  padding: '0.25rem 0.55rem',
+                  cursor: 'pointer',
+                  fontSize: '0.78rem',
+                  color: '#6b7280',
+                  whiteSpace: 'nowrap',
+                }}
+              >
+                Switch Persona
+              </button>
               <button
                 onClick={() => navigate('/change-password')}
                 style={{
