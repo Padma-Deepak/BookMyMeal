@@ -47,6 +47,13 @@ const BillingHistoryPage: React.FC = () => {
   const [reimbursing, setReimbursing] = useState<string | null>(null);
   const proofRefs = useRef<Record<string, HTMLInputElement | null>>({});
 
+  const fetchPurchases = () => {
+    apiGet<ExternalPurchase[]>('/external-purchases/')
+      .then(setPurchases)
+      .catch(() => setPurchasesError('Failed to load caretaker billing history.'))
+      .finally(() => setPurchasesLoading(false));
+  };
+
   useEffect(() => {
     apiGet<Bill[]>('/bills/')
       .then(setBills)
@@ -60,13 +67,6 @@ const BillingHistoryPage: React.FC = () => {
 
     fetchPurchases();
   }, []);
-
-  const fetchPurchases = () => {
-    apiGet<ExternalPurchase[]>('/external-purchases/')
-      .then(setPurchases)
-      .catch(() => setPurchasesError('Failed to load caretaker billing history.'))
-      .finally(() => setPurchasesLoading(false));
-  };
 
   const handleReimburse = async (ep: ExternalPurchase) => {
     const file = proofRefs.current[ep.id]?.files?.[0];
