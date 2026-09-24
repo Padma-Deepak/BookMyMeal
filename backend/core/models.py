@@ -98,6 +98,9 @@ class Order(models.Model):
         max_length=50, choices=REJECTION_REASON_CHOICES, null=True, blank=True
     )
     rejection_notes = models.TextField(blank=True)
+    bill = models.ForeignKey(
+        'Bill', on_delete=models.SET_NULL, null=True, blank=True, related_name='orders'
+    )
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
@@ -209,7 +212,6 @@ class Bill(models.Model):
     ]
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     guest = models.ForeignKey(User, on_delete=models.CASCADE, related_name='bills')
-    orders = models.ManyToManyField(Order, related_name='bills', blank=True)
     created_by = models.ForeignKey(
         User, on_delete=models.SET_NULL, null=True, blank=True,
         related_name='generated_bills'

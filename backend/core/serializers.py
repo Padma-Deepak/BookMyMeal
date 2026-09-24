@@ -327,21 +327,20 @@ class BillSerializer(serializers.ModelSerializer):
                 raise serializers.ValidationError(
                     {'order_ids': f"Order(s) not found for this guest: {missing}"}
                 )
-            already_billed = list(
-                Order.objects.filter(id__in=found_ids, bills__isnull=False)
-                .values_list('id', flat=True)
-            )
+            # Order.bill is a FK (at most one bill per order, enforced by the
+            # schema itself) — already fetched above under the lock, so this
+            # is a plain Python check, no extra query needed.
+            already_billed = [str(o.id) for o in orders if o.bill_id is not None]
             if already_billed:
                 raise serializers.ValidationError({
-                    'order_ids': f"Order(s) already attached to another bill: "
-                                  f"{[str(oid) for oid in already_billed]}"
+                    'order_ids': f"Order(s) already attached to another bill: {already_billed}"
                 })
             bill = Bill.objects.create(
                 guest=guest,
                 created_by=self.context['request'].user,
                 **validated_data,
             )
-            bill.orders.set(orders)
+            Order.objects.filter(id__in=found_ids).update(bill=bill)
             # Attach any of this guest's not-yet-billed, caretaker-unpaid purchases
             # (PRD §4.3.2). A single bulk UPDATE (WHERE bill IS NULL) is itself
             # atomic against double-attachment: the UPDATE statement locks the
@@ -354,27 +353,6 @@ class BillSerializer(serializers.ModelSerializer):
 
 
 # ─── Caterer Bill (uses caterer_price) ────────────────────────────────────────
-
-class CatererOrderItemSerializer(serializers.ModelSerializer):
-    menu_item_id = serializers.UUIDField(source='menu_item.id', read_only=True)
-    name = serializers.CharField(source='menu_item.name', read_only=True)
-    caterer_price = serializers.DecimalField(
-        source='caterer_unit_price', max_digits=8, decimal_places=2, read_only=True
-    )
-    is_complimentary = serializers.BooleanField(read_only=True)
-
-    class Meta:
-        model = OrderItem
-        fields = ['menu_item_id', 'name', 'caterer_price', 'is_complimentary', 'quantity', 'spicy_level']
-
-
-class CatererOrderSerializer(serializers.ModelSerializer):
-    items_detail = CatererOrderItemSerializer(source='items', many=True, read_only=True)
-
-    class Meta:
-        model = Order
-        fields = ['id', 'status', 'items_detail', 'allergy_notes', 'created_at']
-
 
 class CatererBillSerializer(serializers.ModelSerializer):
     """Serializes a Bill scoped to ONE caterer's share of it — items, amount,

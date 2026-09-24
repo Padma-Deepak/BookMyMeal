@@ -34,11 +34,11 @@ class OrderItemInline(admin.TabularInline):
 
 @admin.register(Order)
 class OrderAdmin(admin.ModelAdmin):
-    list_display = ('id_short', 'guest', 'status', 'allergy_notes', 'created_at')
+    list_display = ('id_short', 'guest', 'status', 'bill', 'allergy_notes', 'created_at')
     list_filter = ('status',)
     search_fields = ('guest__username',)
     inlines = [OrderItemInline]
-    readonly_fields = ('id', 'created_at', 'updated_at')
+    readonly_fields = ('id', 'bill', 'created_at', 'updated_at')
 
     def id_short(self, obj):
         return str(obj.id)[:8].upper()
@@ -66,13 +66,32 @@ class BillPaymentInline(admin.TabularInline):
     readonly_fields = ('uploaded_by', 'created_at')
 
 
+class BillOrderInline(admin.TabularInline):
+    """Read-only view of the orders attached to this bill (Order.bill FK,
+    reverse related_name='orders') — attachment happens via the billing
+    flow, not manually in admin."""
+    model = Order
+    fk_name = 'bill'
+    extra = 0
+    fields = ('id_short', 'guest', 'status', 'created_at')
+    readonly_fields = ('id_short', 'guest', 'status', 'created_at')
+    can_delete = False
+    show_change_link = True
+
+    def has_add_permission(self, request, obj=None):
+        return False
+
+    def id_short(self, obj):
+        return str(obj.id)[:8].upper()
+    id_short.short_description = 'ID'
+
+
 @admin.register(Bill)
 class BillAdmin(admin.ModelAdmin):
     list_display = ('id_short', 'guest', 'status', 'discount_amount', 'discount_percentage', 'created_at')
     list_filter = ('status',)
     search_fields = ('guest__username',)
-    filter_horizontal = ('orders',)
-    inlines = [BillPaymentInline]
+    inlines = [BillOrderInline, BillPaymentInline]
     readonly_fields = ('id', 'created_at')
 
     def id_short(self, obj):
