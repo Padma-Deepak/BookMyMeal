@@ -351,8 +351,10 @@ class BillingIntegrityTests(BookMyMealAPITestCase):
         }, format='json')
         self.assertEqual(second.status_code, status.HTTP_400_BAD_REQUEST)
         self.assertIn('order_ids', second.data)
-        # Still only on the first bill.
-        self.assertEqual(order.bills.count(), 1)
+        # Still only on the first bill — Order.bill is a FK, so this is
+        # structurally impossible to violate, not just app-checked.
+        order.refresh_from_db()
+        self.assertEqual(order.bill_id, Bill.objects.get(id=first.data['id']).id)
 
     def test_bill_generation_is_atomic_on_missing_order(self):
         """If one order_id doesn't exist/belong to this guest, no bill or
@@ -366,4 +368,5 @@ class BillingIntegrityTests(BookMyMealAPITestCase):
         }, format='json')
         self.assertEqual(res.status_code, status.HTTP_400_BAD_REQUEST)
         self.assertEqual(Bill.objects.count(), bills_before)
-        self.assertEqual(order.bills.count(), 0)
+        order.refresh_from_db()
+        self.assertIsNone(order.bill_id)
