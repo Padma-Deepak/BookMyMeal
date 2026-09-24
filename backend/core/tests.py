@@ -13,11 +13,23 @@ from decimal import Decimal
 
 from django.contrib.auth import get_user_model
 from django.test import TestCase
-from rest_framework.test import APITestCase
 from rest_framework import status
+from rest_framework.test import APITestCase
 
-from core.models import MenuItem, Order, OrderItem, Bill
-from core.state_machine import validate_transition, InvalidTransition, ALLOWED_TRANSITIONS
+from core.models import (
+    Bill,
+    ExternalPurchase,
+    MenuItem,
+    Notification,
+    Order,
+    OrderItem,
+    Vendor,
+)
+from core.state_machine import (
+    ALLOWED_TRANSITIONS,
+    InvalidTransition,
+    validate_transition,
+)
 
 User = get_user_model()
 
@@ -284,8 +296,8 @@ class OrderItemRelationalTests(BookMyMealAPITestCase):
         """N+1 guard: GET /api/orders/ as manager must issue the SAME number
         of queries whether there are 2 orders or 7 — i.e. select_related/
         prefetch_related are actually batching, not firing per row."""
-        from django.test.utils import CaptureQueriesContext
         from django.db import connection
+        from django.test.utils import CaptureQueriesContext
 
         second_item = make_menu_item(self.caterer, name='Second Item')
 
@@ -370,3 +382,401 @@ class BillingIntegrityTests(BookMyMealAPITestCase):
         self.assertEqual(Bill.objects.count(), bills_before)
         order.refresh_from_db()
         self.assertIsNone(order.bill_id)
+
+
+# ─── Permission matrix ──────────────────────────────────────────────────────
+#
+# Data-driven proof that every pure role-gated endpoint enforces exactly the
+# roles it claims to, checked against ALL FIVE roles plus anonymous. This is
+# deliberately separate from the more granular object-ownership tests above
+# (e.g. "a caterer can't edit ANOTHER caterer's menu item") — this matrix
+# tests the role gate itself: can this role even attempt the action at all.
+#
+# For an ALLOWED role we only assert the request wasn't rejected for
+# authorization reasons (not 401/403); whether the request then succeeds or
+# fails on data validation (400) is a business-logic concern covered
+# elsewhere, not a permission concern.
+
+class PermissionMatrixTests(BookMyMealAPITestCase):
+    def setUp(self):
+        super().setUp()
+        self.superuser = make_user('super_t', 'superuser')
+        self.vendor = Vendor.objects.create(name='Matrix Vendor', vendor_type='ad-hoc')
+        self.actors = {
+            'anonymous': None,
+            'guest': self.guest,
+            'caterer': self.caterer,
+            'caretaker': self.caretaker,
+            'manager': self.manager,
+            'superuser': self.superuser,
+        }
+
+    def _matrix(self):
+        """(method, path, body, allowed_roles). body=None for GET."""
+        return [
+            ('POST', '/api/menu-items/',
+             {'name': 'Matrix Item', 'category': 'snacks', 'caterer_price': '10.00'},
+             {'caterer', 'superuser'}),
+            ('POST', '/api/users/',
+             {'username': 'matrix_new_user', 'password': 'x', 'role': 'guest'},
+             {'manager', 'superuser'}),
+            ('POST', '/api/external-purchases/',
+             {'guest': str(self.guest.id), 'vendor_name': 'V', 'item_name': 'I',
+              'quantity': 1, 'cost': '10.00'},
+             {'caretaker', 'superuser'}),
+            ('POST', '/api/bills/',
+             {'guest_id': str(self.guest.id), 'order_ids': []},
+             {'manager', 'superuser'}),
+            ('POST', '/api/bill-payments/',
+             {'bill': '00000000-0000-0000-0000-000000000000', 'caterer': str(self.caterer.id)},
+             {'manager', 'superuser'}),
+            ('POST', '/api/orders/',
+             {'items': [{'menu_item_id': str(self.item.id), 'quantity': 1, 'spicy_level': 'None'}]},
+             {'guest', 'superuser'}),
+            ('GET', '/api/vendors/', None, {'manager', 'superuser'}),
+            ('GET', f'/api/vendors/{self.vendor.id}/', None, {'superuser'}),
+            ('PATCH', f'/api/vendors/{self.vendor.id}/', {'name': 'Renamed'}, {'superuser'}),
+            ('GET', '/api/caterer-bills/', None, {'caterer', 'manager', 'superuser'}),
+            ('POST', f'/api/users/{self.guest.id}/set-password/',
+             {'new_password': 'newpass123'}, {'superuser'}),
+        ]
+
+    def test_permission_matrix(self):
+        method_fn = {
+            'GET': self.client.get,
+            'POST': self.client.post,
+            'PATCH': self.client.patch,
+        }
+        for method, path, body, allowed_roles in self._matrix():
+            for role_name, user in self.actors.items():
+                with self.subTest(method=method, path=path, role=role_name):
+                    self.client.force_authenticate(user=user)
+                    kwargs = {'format': 'json'} if body is not None else {}
+                    res = method_fn[method](path, body, **kwargs) if body is not None else method_fn[method](path)
+
+                    if role_name == 'anonymous':
+                        self.assertEqual(
+                            res.status_code, status.HTTP_401_UNAUTHORIZED,
+                            f"anonymous {method} {path} -> expected 401, got {res.status_code}"
+                        )
+                    elif role_name in allowed_roles:
+                        self.assertNotIn(
+                            res.status_code, (401, 403),
+                            f"{role_name} should be ALLOWED to {method} {path} "
+                            f"but got {res.status_code}: {res.data}"
+                        )
+                    else:
+                        self.assertEqual(
+                            res.status_code, status.HTTP_403_FORBIDDEN,
+                            f"{role_name} should be FORBIDDEN from {method} {path} "
+                            f"but got {res.status_code}: {getattr(res, 'data', None)}"
+                        )
+
+
+# ─── Full lifecycle flow tests ──────────────────────────────────────────────
+
+class OrderLifecycleFlowTests(BookMyMealAPITestCase):
+    """End-to-end journeys through multiple roles in sequence — proof the
+    pieces fixed individually above actually compose into working flows."""
+
+    def test_happy_path_order_to_paid_bill(self):
+        # 1. Guest places an order.
+        order_res = self.place_order(items=[
+            {'menu_item_id': str(self.item.id), 'quantity': 2, 'spicy_level': 'Mild'},
+        ])
+        self.assertEqual(order_res.status_code, status.HTTP_201_CREATED, order_res.data)
+        order_id = order_res.data['id']
+        self.assertEqual(order_res.data['status'], 'pending')
+
+        # 2. Caterer accepts, then marks prepared.
+        self.auth(self.caterer)
+        accept_res = self.client.patch(f'/api/orders/{order_id}/', {'status': 'accepted'}, format='json')
+        self.assertEqual(accept_res.status_code, status.HTTP_200_OK, accept_res.data)
+        prepared_res = self.client.patch(f'/api/orders/{order_id}/', {'status': 'prepared'}, format='json')
+        self.assertEqual(prepared_res.status_code, status.HTTP_200_OK, prepared_res.data)
+
+        # 3. Manager bills it.
+        self.auth(self.manager)
+        bill_res = self.client.post('/api/bills/', {
+            'guest_id': str(self.guest.id), 'order_ids': [order_id],
+        }, format='json')
+        self.assertEqual(bill_res.status_code, status.HTTP_201_CREATED, bill_res.data)
+        self.assertAlmostEqual(bill_res.data['grand_total'], 100.0)  # 50.00 * 2
+        bill_id = bill_res.data['id']
+
+        # 4. Manager marks it paid.
+        pay_res = self.client.patch(f'/api/bills/{bill_id}/', {'status': 'paid'}, format='json')
+        self.assertEqual(pay_res.status_code, status.HTTP_200_OK, pay_res.data)
+
+        # 5. Guest sees their own paid bill.
+        self.auth(self.guest)
+        guest_view = self.client.get(f'/api/bills/{bill_id}/')
+        self.assertEqual(guest_view.status_code, status.HTTP_200_OK)
+        self.assertEqual(guest_view.data['status'], 'paid')
+
+    def test_rejection_to_external_purchase_to_bill(self):
+        # 1. Guest places an order.
+        order_res = self.place_order()
+        order_id = order_res.data['id']
+
+        # 2. Caterer rejects it — routed to caretaker, not the guest, per PRD.
+        self.auth(self.caterer)
+        reject_res = self.client.patch(f'/api/orders/{order_id}/', {
+            'status': 'rejected', 'rejection_reason': 'out_of_stock',
+        }, format='json')
+        self.assertEqual(reject_res.status_code, status.HTTP_200_OK, reject_res.data)
+        self.assertEqual(reject_res.data['status'], 'rejected')
+
+        # 3. Caretaker sources the item externally instead, logging a purchase
+        #    against the same guest — this is what actually ends up billable.
+        self.auth(self.caretaker)
+        ep_res = self.client.post('/api/external-purchases/', {
+            'guest': str(self.guest.id),
+            'vendor_name': 'Corner Store',
+            'item_name': 'Dosa (sourced externally)',
+            'quantity': 1,
+            'cost': '45.00',
+            'is_paid_by_caretaker': False,
+        }, format='json')
+        self.assertEqual(ep_res.status_code, status.HTTP_201_CREATED, ep_res.data)
+
+        # 4. Caretaker resolves the rejected order (handled externally).
+        resolve_res = self.client.patch(f'/api/orders/{order_id}/', {
+            'status': 'resolved',
+        }, format='json')
+        self.assertEqual(resolve_res.status_code, status.HTTP_200_OK, resolve_res.data)
+
+        # 5. Manager bills the guest — the rejected order was never
+        #    'accepted/prepared/delivered' so it wouldn't normally be selected
+        #    for billing; only the external purchase is included here.
+        self.auth(self.manager)
+        bill_res = self.client.post('/api/bills/', {
+            'guest_id': str(self.guest.id), 'order_ids': [],
+        }, format='json')
+        self.assertEqual(bill_res.status_code, status.HTTP_201_CREATED, bill_res.data)
+        self.assertAlmostEqual(bill_res.data['grand_total'], 45.00)
+        self.assertEqual(len(bill_res.data['external_purchases_detail']), 1)
+
+
+# ─── Endpoints not otherwise covered above ─────────────────────────────────
+
+class MiscEndpointTests(BookMyMealAPITestCase):
+    def test_notification_created_on_order_accept_and_can_be_marked_read(self):
+        order_res = self.place_order()
+        order_id = order_res.data['id']
+        self.auth(self.caterer)
+        self.client.patch(f'/api/orders/{order_id}/', {'status': 'accepted'}, format='json')
+
+        self.auth(self.guest)
+        notif_res = self.client.get('/api/notifications/')
+        self.assertEqual(notif_res.status_code, status.HTTP_200_OK)
+        self.assertGreaterEqual(len(notif_res.data), 1)
+        notif_id = notif_res.data[0]['id']
+        self.assertFalse(notif_res.data[0]['is_read'])
+
+        read_res = self.client.patch(f'/api/notifications/{notif_id}/read/', {}, format='json')
+        self.assertEqual(read_res.status_code, status.HTTP_200_OK)
+        self.assertTrue(read_res.data['is_read'])
+
+    def test_guest_cannot_read_another_guests_notifications(self):
+        other_guest = make_user('other_guest_t', 'guest')
+        Notification.objects.create(user=other_guest, message='Not yours')
+        self.auth(self.guest)
+        res = self.client.get('/api/notifications/')
+        self.assertEqual(res.status_code, status.HTTP_200_OK)
+        self.assertEqual(len(res.data), 0)
+
+    def test_superuser_can_reset_a_users_password(self):
+        superuser = make_user('super_pw_t', 'superuser')
+        self.auth(superuser)
+        res = self.client.post(f'/api/users/{self.guest.id}/set-password/', {
+            'new_password': 'brandnewpass123',
+        }, format='json')
+        self.assertEqual(res.status_code, status.HTTP_200_OK)
+        self.guest.refresh_from_db()
+        self.assertTrue(self.guest.check_password('brandnewpass123'))
+
+    def test_vendor_rename_by_superuser(self):
+        vendor = Vendor.objects.create(name='Old Name', vendor_type='ad-hoc')
+        superuser = make_user('super_vendor_t', 'superuser')
+        self.auth(superuser)
+        res = self.client.patch(f'/api/vendors/{vendor.id}/', {'name': 'New Name'}, format='json')
+        self.assertEqual(res.status_code, status.HTTP_200_OK)
+        vendor.refresh_from_db()
+        self.assertEqual(vendor.name, 'New Name')
+
+    def test_change_own_password(self):
+        self.auth(self.guest)
+        res = self.client.post('/api/change-password/', {
+            'current_password': 'testpass123', 'new_password': 'anothernewpass123',
+        }, format='json')
+        self.assertEqual(res.status_code, status.HTTP_200_OK)
+        self.guest.refresh_from_db()
+        self.assertTrue(self.guest.check_password('anothernewpass123'))
+
+    def test_change_password_rejects_wrong_current_password(self):
+        self.auth(self.guest)
+        res = self.client.post('/api/change-password/', {
+            'current_password': 'wrongpassword', 'new_password': 'anothernewpass123',
+        }, format='json')
+        self.assertEqual(res.status_code, status.HTTP_400_BAD_REQUEST)
+
+    def test_change_password_rejects_too_short(self):
+        self.auth(self.guest)
+        res = self.client.post('/api/change-password/', {
+            'current_password': 'testpass123', 'new_password': 'ab',
+        }, format='json')
+        self.assertEqual(res.status_code, status.HTTP_400_BAD_REQUEST)
+
+    def test_menu_item_delete_blocked_when_it_has_orders(self):
+        """PROTECT on OrderItem.menu_item — deleting a menu item that's been
+        ordered must fail cleanly (400), not 500."""
+        self.place_order()
+        self.auth(self.caterer)
+        res = self.client.delete(f'/api/menu-items/{self.item.id}/')
+        self.assertEqual(res.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertTrue(MenuItem.objects.filter(id=self.item.id).exists())
+
+    def test_menu_item_delete_allowed_when_unordered(self):
+        unordered = make_menu_item(self.caterer, name='Never Ordered')
+        self.auth(self.caterer)
+        res = self.client.delete(f'/api/menu-items/{unordered.id}/')
+        self.assertEqual(res.status_code, status.HTTP_204_NO_CONTENT)
+
+
+# ─── External purchase role branches ───────────────────────────────────────
+
+class ExternalPurchaseDetailTests(BookMyMealAPITestCase):
+    def _log_purchase(self, is_paid_by_caretaker=False):
+        self.auth(self.caretaker)
+        res = self.client.post('/api/external-purchases/', {
+            'guest': str(self.guest.id), 'vendor_name': 'Test Vendor',
+            'item_name': 'Snack', 'quantity': 1, 'cost': '25.00',
+            'is_paid_by_caretaker': is_paid_by_caretaker,
+        }, format='json')
+        self.assertEqual(res.status_code, status.HTTP_201_CREATED, res.data)
+        return res.data['id']
+
+    def test_manager_can_mark_purchase_reimbursed(self):
+        ep_id = self._log_purchase()
+        self.auth(self.manager)
+        res = self.client.patch(f'/api/external-purchases/{ep_id}/', {'is_reimbursed': True}, format='json')
+        self.assertEqual(res.status_code, status.HTTP_200_OK, res.data)
+        self.assertTrue(res.data['is_reimbursed'])
+
+    def test_caterer_cannot_mark_purchase_reimbursed(self):
+        ep_id = self._log_purchase()
+        self.auth(self.caterer)
+        res = self.client.patch(f'/api/external-purchases/{ep_id}/', {'is_reimbursed': True}, format='json')
+        self.assertEqual(res.status_code, status.HTTP_403_FORBIDDEN)
+
+    def test_caretaker_can_delete_own_purchase(self):
+        ep_id = self._log_purchase()
+        self.auth(self.caretaker)
+        res = self.client.delete(f'/api/external-purchases/{ep_id}/')
+        self.assertEqual(res.status_code, status.HTTP_204_NO_CONTENT)
+
+    def test_caretaker_cannot_delete_another_caretakers_purchase(self):
+        """get_queryset scopes a caretaker to only their own purchases, so a
+        foreign purchase 404s (not found in their scope) rather than 403."""
+        ep_id = self._log_purchase()
+        other_caretaker = make_user('other_caretaker_t', 'caretaker')
+        self.auth(other_caretaker)
+        res = self.client.delete(f'/api/external-purchases/{ep_id}/')
+        self.assertEqual(res.status_code, status.HTTP_404_NOT_FOUND)
+        self.assertTrue(ExternalPurchase.objects.filter(id=ep_id).exists())
+
+    def test_guest_can_view_own_external_purchases(self):
+        self._log_purchase()
+        self.auth(self.guest)
+        res = self.client.get('/api/external-purchases/')
+        self.assertEqual(res.status_code, status.HTTP_200_OK)
+        self.assertEqual(len(res.data), 1)
+
+
+# ─── Caterer bills + PDF generation ────────────────────────────────────────
+
+class CatererBillAndPDFTests(BookMyMealAPITestCase):
+    def _paid_scenario_bill(self):
+        order_res = self.place_order(items=[
+            {'menu_item_id': str(self.item.id), 'quantity': 1, 'spicy_level': 'None'},
+        ])
+        order_id = order_res.data['id']
+        self.auth(self.caterer)
+        self.client.patch(f'/api/orders/{order_id}/', {'status': 'accepted'}, format='json')
+        self.auth(self.manager)
+        bill_res = self.client.post('/api/bills/', {
+            'guest_id': str(self.guest.id), 'order_ids': [order_id],
+        }, format='json')
+        return bill_res.data['id']
+
+    def test_caterer_sees_own_payout_row_in_caterer_bills_list(self):
+        self._paid_scenario_bill()
+        self.auth(self.caterer)
+        res = self.client.get('/api/caterer-bills/')
+        self.assertEqual(res.status_code, status.HTTP_200_OK)
+        self.assertEqual(len(res.data), 1)
+        self.assertEqual(res.data[0]['caterer_id'], str(self.caterer.id))
+        self.assertAlmostEqual(res.data[0]['total_caterer_amount'], 30.0)  # caterer_price
+
+    def test_manager_sees_per_caterer_breakdown_in_caterer_bill_detail(self):
+        bill_id = self._paid_scenario_bill()
+        self.auth(self.manager)
+        res = self.client.get(f'/api/caterer-bills/{bill_id}/')
+        self.assertEqual(res.status_code, status.HTTP_200_OK)
+        self.assertIn('caterers', res.data)
+        self.assertEqual(len(res.data['caterers']), 1)
+
+    def test_guest_bill_pdf_downloads(self):
+        bill_id = self._paid_scenario_bill()
+        self.auth(self.guest)
+        res = self.client.get(f'/api/bills/{bill_id}/pdf/')
+        self.assertEqual(res.status_code, status.HTTP_200_OK)
+        self.assertEqual(res['Content-Type'], 'application/pdf')
+
+    def test_caterer_bill_pdf_downloads(self):
+        bill_id = self._paid_scenario_bill()
+        self.auth(self.caterer)
+        res = self.client.get(f'/api/caterer-bills/{bill_id}/pdf/')
+        self.assertEqual(res.status_code, status.HTTP_200_OK)
+        self.assertEqual(res['Content-Type'], 'application/pdf')
+
+    def test_guest_cannot_download_another_guests_bill_pdf(self):
+        bill_id = self._paid_scenario_bill()
+        other_guest = make_user('other_guest_pdf_t', 'guest')
+        self.auth(other_guest)
+        res = self.client.get(f'/api/bills/{bill_id}/pdf/')
+        self.assertEqual(res.status_code, status.HTTP_404_NOT_FOUND)
+
+
+# ─── Order list filters ────────────────────────────────────────────────────
+
+class OrderListFilterTests(BookMyMealAPITestCase):
+    def test_manager_filters_orders_by_status(self):
+        self.place_order()
+        order2 = Order.objects.get(id=self.place_order().data['id'])
+        order2.status = 'accepted'
+        order2.save()
+
+        self.auth(self.manager)
+        res = self.client.get('/api/orders/?status=accepted')
+        self.assertEqual(res.status_code, status.HTTP_200_OK)
+        self.assertEqual(len(res.data), 1)
+        self.assertEqual(res.data[0]['status'], 'accepted')
+
+    def test_caterer_id_filter_scopes_to_that_caterers_items(self):
+        other_item = make_menu_item(self.other_caterer, name='Other Caterer Item')
+        self.place_order()  # self.item -> self.caterer
+        self.place_order(items=[{'menu_item_id': str(other_item.id), 'quantity': 1, 'spicy_level': 'None'}])
+
+        self.auth(self.manager)
+        res = self.client.get(f'/api/orders/?caterer_id={self.caterer.id}')
+        self.assertEqual(res.status_code, status.HTTP_200_OK)
+        self.assertEqual(len(res.data), 1)
+
+    def test_guest_can_cancel_own_pending_order(self):
+        order_id = self.place_order().data['id']
+        self.auth(self.guest)
+        res = self.client.delete(f'/api/orders/{order_id}/')
+        self.assertEqual(res.status_code, status.HTTP_204_NO_CONTENT)
+        self.assertFalse(Order.objects.filter(id=order_id).exists())
