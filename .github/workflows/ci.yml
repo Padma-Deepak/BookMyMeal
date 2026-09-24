@@ -8,7 +8,7 @@ on:
 
 jobs:
   backend:
-    name: Backend (Django + E2E)
+    name: Backend (Django tests + coverage + ruff)
     runs-on: ubuntu-latest
 
     defaults:
@@ -22,33 +22,24 @@ jobs:
         with:
           python-version: "3.12"
           cache: pip
-          cache-dependency-path: backend/requirements.txt
+          cache-dependency-path: backend/requirements-dev.txt
 
       - name: Install dependencies
-        run: pip install -r requirements.txt
+        run: pip install -r requirements-dev.txt
+
+      - name: Lint (ruff)
+        run: ruff check .
 
       - name: Check Django configuration
         run: python manage.py check
 
-      - name: Run migrations
-        run: python manage.py migrate --noinput
+      - name: Check for missing migrations
+        run: python manage.py makemigrations --check --dry-run
 
-      - name: Seed database
-        run: python seed.py
-
-      - name: Start Django server
-        run: python manage.py runserver 127.0.0.1:8000 &
-
-      - name: Wait for server to be ready
+      - name: Run tests with coverage
         run: |
-          for i in $(seq 1 20); do
-            curl -sf http://127.0.0.1:8000/api/menu-items/ -o /dev/null && echo "Server ready" && break
-            echo "Waiting... ($i)"
-            sleep 1
-          done
-
-      - name: Run E2E tests
-        run: python test_e2e.py
+          coverage run --source=core --omit='core/migrations/*,core/tests.py' manage.py test core
+          coverage report -m --fail-under=75
 
   frontend:
     name: Frontend (TypeScript + Lint)
