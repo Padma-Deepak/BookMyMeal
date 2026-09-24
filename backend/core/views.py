@@ -22,7 +22,11 @@ from .serializers import (
     BillSerializer, CatererBillSerializer,
     BillPaymentSerializer, NotificationSerializer,
 )
-from .permissions import IsManagerOrAbove
+from .permissions import (
+    IsManagerOrAbove, IsCatererOrSuperuser, IsCaretakerOrSuperuser,
+    IsSuperuser, IsCatererOwnerOrSuperuser,
+)
+from .state_machine import validate_transition, InvalidTransition
 
 
 # ─── Helpers ──────────────────────────────────────────────────────────────────
@@ -46,6 +50,41 @@ def _format_hour(hour):
     suffix = 'AM' if hour < 12 else 'PM'
     display_hour = hour % 12 or 12
     return f"{display_hour}:00 {suffix}"
+
+
+def _validate_single_caterer(items_data):
+    """Guest-initiated writes only: an order may only contain items from one
+    caterer. Order.status is a single shared field and caterer accept/reject/
+    prepare actions act on the whole order, so mixing caterers would let one
+    caterer's decision silently govern another caterer's items."""
+    menu_item_ids = [i['menu_item_id'] for i in items_data]
+    caterer_ids = set(MenuItem.objects.filter(id__in=menu_item_ids).values_list('caterer_id', flat=True))
+    if len(caterer_ids) > 1:
+        raise ValidationError({
+            'items': 'An order can only contain items from one caterer. Please submit separate orders.'
+        })
+
+
+def _validate_notice_period(items_data):
+    """Guest-initiated writes only: items with a notice_period_minutes cutoff
+    can't be ordered once too little time remains before midnight. Mirrors
+    frontend/src/lib/notice.ts's isWithinNoticePeriod, but using server-side
+    local time so a client with a manipulated clock can't bypass it."""
+    menu_item_ids = [i['menu_item_id'] for i in items_data]
+    now = timezone.localtime()
+    minutes_until_midnight = (23 - now.hour) * 60 + (59 - now.minute)
+    blocked = list(
+        MenuItem.objects
+        .filter(id__in=menu_item_ids, notice_period_minutes__gt=minutes_until_midnight)
+        .values_list('name', flat=True)
+    )
+    if blocked:
+        raise ValidationError({
+            'items': (
+                f"These items require more advance notice than remains before today's cutoff: "
+                f"{', '.join(blocked)}."
+            )
+        })
 
 
 def _validate_category_time_window(items_data):
@@ -100,11 +139,10 @@ class UserListView(generics.ListCreateAPIView):
             qs = qs.filter(role=role)
         return qs
 
-    def perform_create(self, serializer):
-        if self.request.user.role not in ('manager', 'superuser'):
-            from rest_framework.exceptions import PermissionDenied
-            raise PermissionDenied("Only managers can create users.")
-        serializer.save()
+    def get_permissions(self):
+        if self.request.method == 'POST':
+            return [IsAuthenticated(), IsManagerOrAbove()]
+        return [IsAuthenticated()]
 
 
 # ─── Menu Items ───────────────────────────────────────────────────────────────
@@ -124,11 +162,10 @@ class MenuItemListCreateView(generics.ListCreateAPIView):
             return MenuItem.objects.filter(caterer=user)
         return MenuItem.objects.filter(is_available=True)
 
-    def perform_create(self, serializer):
-        if self.request.user.role not in ('caterer', 'superuser'):
-            from rest_framework.exceptions import PermissionDenied
-            raise PermissionDenied("Only caterers can create menu items.")
-        serializer.save()
+    def get_permissions(self):
+        if self.request.method == 'POST':
+            return [IsAuthenticated(), IsCatererOrSuperuser()]
+        return [IsAuthenticated()]
 
 
 class MenuItemDetailView(generics.RetrieveUpdateDestroyAPIView):
@@ -138,22 +175,10 @@ class MenuItemDetailView(generics.RetrieveUpdateDestroyAPIView):
     DELETE /api/menu-items/<uuid>/ — caterer (own items) or superuser.
     """
     serializer_class = MenuItemSerializer
-    permission_classes = [IsAuthenticated]
-
-    def get_queryset(self):
-        user = self.request.user
-        if user.role == 'caterer':
-            return MenuItem.objects.filter(caterer=user)
-        return MenuItem.objects.all()
-
-    def update(self, request, *args, **kwargs):
-        if request.user.role not in ('caterer', 'superuser'):
-            return Response({'detail': 'Only caterers can update menu items.'}, status=403)
-        return super().update(request, *args, **kwargs)
+    permission_classes = [IsCatererOwnerOrSuperuser]
+    queryset = MenuItem.objects.all()
 
     def destroy(self, request, *args, **kwargs):
-        if request.user.role not in ('caterer', 'superuser'):
-            return Response({'detail': 'Only caterers can delete menu items.'}, status=403)
         try:
             return super().destroy(request, *args, **kwargs)
         except ProtectedError:
@@ -204,7 +229,9 @@ class OrderListCreateView(generics.ListCreateAPIView):
             from rest_framework.exceptions import PermissionDenied
             raise PermissionDenied("Only guests can place orders.")
         _validate_single_category(serializer.validated_data['items'])
+        _validate_single_caterer(serializer.validated_data['items'])
         _validate_category_time_window(serializer.validated_data['items'])
+        _validate_notice_period(serializer.validated_data['items'])
         order = serializer.save()
         # Notify caterers whose items are in this order (PRD §4.2.2)
         caterer_ids = (
@@ -244,19 +271,10 @@ class OrderDetailView(generics.RetrieveUpdateDestroyAPIView):
             if not order.items.filter(menu_item__caterer=user).exists():
                 return Response({'detail': 'This order does not contain your items.'}, status=403)
             new_status = request.data.get('status', order.status)
-            # Enforce status machine: caterer can only transition from valid states
-            decision_statuses = {'accepted', 'rejected', 'partially_accepted'}
-            prep_statuses = {'prepared', 'delivered'}
-            if new_status in decision_statuses and order.status != 'pending':
-                return Response(
-                    {'detail': f'Cannot change status to {new_status}: order is already {order.status}.'},
-                    status=400
-                )
-            if new_status in prep_statuses and order.status not in ('accepted', 'partially_accepted', 'prepared'):
-                return Response(
-                    {'detail': f'Cannot mark as {new_status}: order must be accepted or partially_accepted first.'},
-                    status=400
-                )
+            try:
+                validate_transition(order.status, new_status)
+            except InvalidTransition as exc:
+                return Response({'detail': str(exc)}, status=400)
             allowed = {'status', 'rejection_reason', 'rejection_notes', 'items'}
             data = {k: v for k, v in request.data.items() if k in allowed}
             # rejection_reason is required when rejecting
@@ -301,6 +319,10 @@ class OrderDetailView(generics.RetrieveUpdateDestroyAPIView):
             # Otherwise (legacy modify flow): force 'pending' when items are changed.
             if 'items' in data and explicit_status != 'resolved':
                 data['status'] = 'pending'
+            try:
+                validate_transition(order.status, data.get('status', order.status))
+            except InvalidTransition as exc:
+                return Response({'detail': str(exc)}, status=400)
             serializer = self.get_serializer(order, data=data, partial=True)
             serializer.is_valid(raise_exception=True)
             serializer.save()
@@ -318,6 +340,11 @@ class OrderDetailView(generics.RetrieveUpdateDestroyAPIView):
             return Response(serializer.data)
 
         elif user.role == 'manager':
+            if 'status' in request.data:
+                try:
+                    validate_transition(order.status, request.data['status'])
+                except InvalidTransition as exc:
+                    return Response({'detail': str(exc)}, status=400)
             serializer = self.get_serializer(order, data=request.data, partial=True)
             serializer.is_valid(raise_exception=True)
             serializer.save()
@@ -335,7 +362,9 @@ class OrderDetailView(generics.RetrieveUpdateDestroyAPIView):
                 return Response({'detail': 'No editable fields provided.'}, status=400)
             if 'items' in data:
                 _validate_single_category(data['items'])
+                _validate_single_caterer(data['items'])
                 _validate_category_time_window(data['items'])
+                _validate_notice_period(data['items'])
             serializer = self.get_serializer(order, data=data, partial=True)
             serializer.is_valid(raise_exception=True)
             serializer.save()
@@ -386,10 +415,12 @@ class ExternalPurchaseListCreateView(generics.ListCreateAPIView):
             return qs.filter(caretaker=user)
         return qs.filter(guest=user)
 
+    def get_permissions(self):
+        if self.request.method == 'POST':
+            return [IsAuthenticated(), IsCaretakerOrSuperuser()]
+        return [IsAuthenticated()]
+
     def perform_create(self, serializer):
-        if self.request.user.role not in ('caretaker', 'superuser'):
-            from rest_framework.exceptions import PermissionDenied
-            raise PermissionDenied("Only caretakers can log external purchases.")
         ep = serializer.save()
         # PRD §4.3.2: if unpaid by caretaker, it goes on the guest bill
         if not ep.is_paid_by_caretaker:
@@ -414,9 +445,12 @@ class ExternalPurchaseDetailView(generics.RetrieveUpdateDestroyAPIView):
         from rest_framework.exceptions import PermissionDenied
         raise PermissionDenied("Access denied.")
 
+    def get_permissions(self):
+        if self.request.method in ('PUT', 'PATCH'):
+            return [IsAuthenticated(), IsManagerOrAbove()]
+        return [IsAuthenticated()]
+
     def partial_update(self, request, *args, **kwargs):
-        if request.user.role not in ('manager', 'superuser'):
-            return Response({'detail': 'Only managers can update external purchases.'}, status=403)
         ep = self.get_object()
         data = {}
         if 'is_reimbursed' in request.data:
@@ -444,25 +478,15 @@ class ExternalPurchaseDetailView(generics.RetrieveUpdateDestroyAPIView):
 class VendorListView(generics.ListAPIView):
     """GET /api/vendors/ — manager or superuser."""
     serializer_class = VendorSerializer
-    permission_classes = [IsAuthenticated]
-
-    def get_queryset(self):
-        if self.request.user.role not in ('manager', 'superuser'):
-            from rest_framework.exceptions import PermissionDenied
-            raise PermissionDenied("Only managers and superusers can view vendors.")
-        return Vendor.objects.all()
+    permission_classes = [IsManagerOrAbove]
+    queryset = Vendor.objects.all()
 
 
 class VendorDetailView(generics.RetrieveUpdateDestroyAPIView):
-    """PATCH/DELETE /api/vendors/<uuid>/ — superuser only."""
+    """GET/PATCH/DELETE /api/vendors/<uuid>/ — superuser only."""
     serializer_class = VendorSerializer
-    permission_classes = [IsAuthenticated]
-
-    def get_queryset(self):
-        if self.request.user.role != 'superuser':
-            from rest_framework.exceptions import PermissionDenied
-            raise PermissionDenied("Only superusers can edit or delete vendors.")
-        return Vendor.objects.all()
+    permission_classes = [IsSuperuser]
+    queryset = Vendor.objects.all()
 
 
 # ─── Bills ────────────────────────────────────────────────────────────────────
@@ -485,11 +509,10 @@ class BillListCreateView(generics.ListCreateAPIView):
         from rest_framework.exceptions import PermissionDenied
         raise PermissionDenied("Access denied.")
 
-    def perform_create(self, serializer):
-        if self.request.user.role not in ('manager', 'superuser'):
-            from rest_framework.exceptions import PermissionDenied
-            raise PermissionDenied("Only managers can generate bills.")
-        serializer.save()
+    def get_permissions(self):
+        if self.request.method == 'POST':
+            return [IsAuthenticated(), IsManagerOrAbove()]
+        return [IsAuthenticated()]
 
 
 class BillDetailView(generics.RetrieveUpdateAPIView):
@@ -768,11 +791,12 @@ def generate_bill_pdf(bill, mode='guest'):
             y -= 0.5 * cm
             p.setFont("Helvetica", 9)
             for item in order.items.select_related('menu_item').all():
-                if item.menu_item.is_complimentary:
+                if item.is_complimentary:
                     line_total = 0
                     price_str = "₹0 (Complimentary)"
                 else:
-                    price = item.menu_item.caterer_price if mode == 'caterer' else item.menu_item.customer_price
+                    # Snapshot taken at order time — not the live MenuItem price.
+                    price = item.caterer_unit_price if mode == 'caterer' else item.unit_price
                     line_total = float(price) * item.quantity
                     price_str = f"₹{float(price):.2f} × {item.quantity} = ₹{line_total:.2f}"
                 subtotal += line_total

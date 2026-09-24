@@ -114,28 +114,41 @@ samosa     = menu_items[7]
 
 print("\n=== Creating orders ===")
 
+
+def mk_item(order, menu_item, quantity, spicy_level='None'):
+    """Build an OrderItem with price/complimentary status snapshotted from the
+    MenuItem now — mirrors what OrderSerializer._save_items does for real
+    orders, so seeded orders bill correctly too."""
+    return OrderItem(
+        order=order, menu_item=menu_item, quantity=quantity, spicy_level=spicy_level,
+        unit_price=menu_item.customer_price,
+        caterer_unit_price=menu_item.caterer_price,
+        is_complimentary=menu_item.is_complimentary,
+    )
+
+
 # Order 1: accepted (eligible for billing)
 order1 = Order.objects.create(guest=guest, status='accepted', allergy_notes='No coconut chutney please')
 OrderItem.objects.bulk_create([
-    OrderItem(order=order1, menu_item=dosa,  quantity=2, spicy_level='Mild'),
-    OrderItem(order=order1, menu_item=chai,  quantity=2, spicy_level='None'),
-    OrderItem(order=order1, menu_item=idli,  quantity=1, spicy_level='None'),
+    mk_item(order1, dosa,  2, 'Mild'),
+    mk_item(order1, chai,  2, 'None'),
+    mk_item(order1, idli,  1, 'None'),
 ])
 print(f"  Order 1 (accepted)  : 2x Masala Dosa (Mild) + 2x Morning Chai + 1x Idli Sambar")
 
 # Order 2: prepared (also eligible for billing)
 order2 = Order.objects.create(guest=guest, status='prepared', allergy_notes='')
 OrderItem.objects.bulk_create([
-    OrderItem(order=order2, menu_item=dal,    quantity=1, spicy_level='Medium'),
-    OrderItem(order=order2, menu_item=paneer, quantity=1, spicy_level='Mild'),
+    mk_item(order2, dal,    1, 'Medium'),
+    mk_item(order2, paneer, 1, 'Mild'),
 ])
 print(f"  Order 2 (prepared)  : 1x Dal Makhani (Medium) + 1x Paneer Butter Masala (Mild)")
 
 # Order 3: pending (not yet approved)
 order3 = Order.objects.create(guest=guest, status='pending', allergy_notes='Extra spicy')
 OrderItem.objects.bulk_create([
-    OrderItem(order=order3, menu_item=fried_rice, quantity=2, spicy_level='Hot'),
-    OrderItem(order=order3, menu_item=samosa,     quantity=4, spicy_level='None'),
+    mk_item(order3, fried_rice, 2, 'Hot'),
+    mk_item(order3, samosa,     4, 'None'),
 ])
 print(f"  Order 3 (pending)   : 2x Veg Fried Rice (Hot) + 4x Samosa")
 
@@ -147,7 +160,7 @@ order4 = Order.objects.create(
     allergy_notes='',
 )
 OrderItem.objects.bulk_create([
-    OrderItem(order=order4, menu_item=biryani, quantity=1, spicy_level='Medium'),
+    mk_item(order4, biryani, 1, 'Medium'),
 ])
 print(f"  Order 4 (rejected)  : 1x Chicken Biryani — reason: ingredients_unavailable")
 

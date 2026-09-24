@@ -91,14 +91,17 @@ class MenuItemSerializer(serializers.ModelSerializer):
 class OrderItemReadSerializer(serializers.ModelSerializer):
     menu_item_id = serializers.UUIDField(source='menu_item.id', read_only=True)
     name = serializers.CharField(source='menu_item.name', read_only=True)
+    # Historical price actually charged when this line item was created — NOT
+    # the live MenuItem price, which may have changed since. Field names are
+    # kept as customer_price/caterer_price for API/frontend compatibility.
     customer_price = serializers.DecimalField(
-        source='menu_item.customer_price', max_digits=8, decimal_places=2, read_only=True
+        source='unit_price', max_digits=8, decimal_places=2, read_only=True
     )
     caterer_price = serializers.DecimalField(
-        source='menu_item.caterer_price', max_digits=8, decimal_places=2, read_only=True
+        source='caterer_unit_price', max_digits=8, decimal_places=2, read_only=True
     )
     category = serializers.CharField(source='menu_item.category', read_only=True)
-    is_complimentary = serializers.BooleanField(source='menu_item.is_complimentary', read_only=True)
+    is_complimentary = serializers.BooleanField(read_only=True)
     notice_period_minutes = serializers.IntegerField(source='menu_item.notice_period_minutes', read_only=True)
 
     class Meta:
@@ -154,15 +157,20 @@ class OrderSerializer(serializers.ModelSerializer):
         missing = [str(mid) for mid in menu_item_ids if str(mid) not in menu_items]
         if missing:
             raise serializers.ValidationError({'items': f'Menu item(s) not found: {missing}'})
-        bulk = [
-            OrderItem(
+        bulk = []
+        for item in items_data:
+            menu_item = menu_items[str(item['menu_item_id'])]
+            bulk.append(OrderItem(
                 order=order,
-                menu_item=menu_items[str(item['menu_item_id'])],
+                menu_item=menu_item,
                 quantity=item['quantity'],
                 spicy_level=item.get('spicy_level', 'None'),
-            )
-            for item in items_data
-        ]
+                # Snapshot price/complimentary status now — never re-derived from
+                # the (possibly later-edited) MenuItem after this point.
+                unit_price=menu_item.customer_price,
+                caterer_unit_price=menu_item.caterer_price,
+                is_complimentary=menu_item.is_complimentary,
+            ))
         OrderItem.objects.bulk_create(bulk)
 
     def create(self, validated_data):
@@ -269,20 +277,25 @@ class BillSerializer(serializers.ModelSerializer):
 
     def get_grand_total(self, obj):
         orders_sub = sum(
-            Decimal(str(item.menu_item.customer_price)) * item.quantity
-            for order in obj.orders.prefetch_related('items__menu_item').all()
-            for item in order.items.all()
-            if not item.menu_item.is_complimentary
+            (item.unit_price * item.quantity
+             for order in obj.orders.prefetch_related('items').all()
+             for item in order.items.all()
+             if not item.is_complimentary),
+            Decimal('0')
         )
         ext_sub = sum(
-            ep.cost
-            for ep in ExternalPurchase.objects.filter(bill=obj, is_paid_by_caretaker=False)
+            (ep.cost
+             for ep in ExternalPurchase.objects.filter(bill=obj, is_paid_by_caretaker=False)),
+            Decimal('0')
         )
         subtotal = orders_sub + ext_sub
+        # Calculation above is exact Decimal arithmetic on snapshotted prices;
+        # cast to float only here, at the JSON boundary, to preserve the
+        # existing `grand_total: number` API contract the frontend relies on.
         if obj.discount_amount and obj.discount_amount > 0:
             return float(subtotal - obj.discount_amount)
         if obj.discount_percentage and obj.discount_percentage > 0:
-            return float(subtotal - subtotal * obj.discount_percentage / 100)
+            return float(subtotal - subtotal * obj.discount_percentage / Decimal('100'))
         return float(subtotal)
 
     def get_pdf_url(self, obj):
@@ -298,14 +311,42 @@ class BillSerializer(serializers.ModelSerializer):
         except User.DoesNotExist:
             raise serializers.ValidationError({'guest_id': 'Guest not found.'})
         with transaction.atomic():
+            # select_for_update() locks the candidate rows for the life of this
+            # transaction on backends that support real row locking (Postgres,
+            # used in production). On SQLite (local dev) the ORM silently drops
+            # the FOR UPDATE clause — SQLite has no row-level locking — but a
+            # write transaction there still takes a whole-database write lock,
+            # so a second concurrent bill-generation call is still serialized
+            # after this one, just at coarser granularity.
+            orders = list(
+                Order.objects.select_for_update().filter(id__in=order_ids, guest=guest)
+            )
+            found_ids = {str(o.id) for o in orders}
+            missing = [str(oid) for oid in order_ids if str(oid) not in found_ids]
+            if missing:
+                raise serializers.ValidationError(
+                    {'order_ids': f"Order(s) not found for this guest: {missing}"}
+                )
+            already_billed = list(
+                Order.objects.filter(id__in=found_ids, bills__isnull=False)
+                .values_list('id', flat=True)
+            )
+            if already_billed:
+                raise serializers.ValidationError({
+                    'order_ids': f"Order(s) already attached to another bill: "
+                                  f"{[str(oid) for oid in already_billed]}"
+                })
             bill = Bill.objects.create(
                 guest=guest,
                 created_by=self.context['request'].user,
                 **validated_data,
             )
-            orders = Order.objects.filter(id__in=order_ids, guest=guest)
             bill.orders.set(orders)
-            # Attach any of this guest's not-yet-billed, caretaker-unpaid purchases (PRD §4.3.2).
+            # Attach any of this guest's not-yet-billed, caretaker-unpaid purchases
+            # (PRD §4.3.2). A single bulk UPDATE (WHERE bill IS NULL) is itself
+            # atomic against double-attachment: the UPDATE statement locks the
+            # rows it modifies, so a concurrent identical UPDATE blocks until
+            # this one commits, then its own WHERE clause no longer matches them.
             ExternalPurchase.objects.filter(
                 guest=guest, is_paid_by_caretaker=False, bill__isnull=True
             ).update(bill=bill)
@@ -318,9 +359,9 @@ class CatererOrderItemSerializer(serializers.ModelSerializer):
     menu_item_id = serializers.UUIDField(source='menu_item.id', read_only=True)
     name = serializers.CharField(source='menu_item.name', read_only=True)
     caterer_price = serializers.DecimalField(
-        source='menu_item.caterer_price', max_digits=8, decimal_places=2, read_only=True
+        source='caterer_unit_price', max_digits=8, decimal_places=2, read_only=True
     )
-    is_complimentary = serializers.BooleanField(source='menu_item.is_complimentary', read_only=True)
+    is_complimentary = serializers.BooleanField(read_only=True)
 
     class Meta:
         model = OrderItem
@@ -393,11 +434,14 @@ class CatererBillSerializer(serializers.ModelSerializer):
             for item in order.items.select_related('menu_item__caterer').all():
                 if caterer and item.menu_item.caterer_id != caterer.id:
                     continue
+                # caterer_unit_price is the snapshot taken at order time — not
+                # the live MenuItem.caterer_price, which may have changed since.
+                line_total = item.caterer_unit_price * item.quantity
                 result.append({
                     'item_name': item.menu_item.name,
                     'quantity': item.quantity,
-                    'caterer_price': float(item.menu_item.caterer_price),
-                    'line_total': float(item.menu_item.caterer_price) * item.quantity,
+                    'caterer_price': float(item.caterer_unit_price),
+                    'line_total': float(line_total),
                     'caterer_id': str(item.menu_item.caterer_id),
                     'caterer_name': item.menu_item.caterer.username,
                 })
@@ -405,13 +449,13 @@ class CatererBillSerializer(serializers.ModelSerializer):
 
     def get_total_caterer_amount(self, obj):
         caterer = self._target_caterer(obj)
-        total = 0.0
+        total = Decimal('0')
         for order in obj.orders.prefetch_related('items__menu_item').all():
             for item in order.items.select_related('menu_item').all():
                 if caterer and item.menu_item.caterer_id != caterer.id:
                     continue
-                total += float(item.menu_item.caterer_price) * item.quantity
-        return total
+                total += item.caterer_unit_price * item.quantity
+        return float(total)
 
     def get_payment_proof_url(self, obj):
         caterer = self._target_caterer(obj)
