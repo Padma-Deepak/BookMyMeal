@@ -268,20 +268,14 @@ long_notice_item = req("POST", "/menu-items/", {
 }, token=CATERER_TOK, label="Caterer creates long-notice test item")
 LONG_NOTICE_ITEM_ID = long_notice_item["id"] if long_notice_item else None
 
-ORDER6_ID = None
+# Backend now enforces notice_period_minutes server-side AT ORDER CREATION
+# too (previously only checked on later edits via is_editable) — so this item,
+# whose notice period always exceeds a day, can no longer be ordered at all.
 if LONG_NOTICE_ITEM_ID and GUEST_TOK:
-    order6 = req("POST", "/orders/", {
-        "items": [{"menu_item_id": LONG_NOTICE_ITEM_ID, "quantity": 1, "spicy_level": "None"}],
-        "allergy_notes": "",
-    }, token=GUEST_TOK, label="Guest places Order 6 (long-notice item)")
-    if order6:
-        ORDER6_ID = order6["id"]
-        check(order6.get("is_editable") is False, "Order past notice cutoff reports is_editable=False")
-        expect_fail("PATCH", f"/orders/{ORDER6_ID}/", 403,
-                    {"allergy_notes": "trying anyway"},
-                    token=GUEST_TOK, label="Guest PATCH blocked by notice-period cutoff -> 403")
-        expect_fail("DELETE", f"/orders/{ORDER6_ID}/", 403,
-                    token=GUEST_TOK, label="Guest DELETE blocked by notice-period cutoff -> 403")
+    expect_fail("POST", "/orders/", 400,
+                {"items": [{"menu_item_id": LONG_NOTICE_ITEM_ID, "quantity": 1, "spicy_level": "None"}],
+                 "allergy_notes": ""},
+                token=GUEST_TOK, label="Guest blocked from placing long-notice item -> 400")
 
 # ── 4. Caterer views pending orders ───────────────────────────────────────────
 section("4. Caterer views pending orders")
@@ -651,18 +645,18 @@ if GUEST_TOK and menu:
         "allergy_notes": "",
     }, token=GUEST_TOK, label="Order with quantity=0 -> 400")
 
-# Duplicate bill generation for same orders
+# Duplicate bill generation for same orders — backend now rejects re-billing
+# an order that's already attached to a bill (Issue 6: double-billing guard).
 if BILL_ID and GUEST_ID and all_guest_orders:
     eligible2 = [o["id"] for o in all_guest_orders
                  if o["status"] in ("accepted", "prepared", "delivered")]
-    # Attempt to create another bill for already-billed orders — behaviour depends on backend
-    dup_bill = req("POST", "/bills/", {
-        "guest_id":          GUEST_ID,
-        "order_ids":         eligible2,
-        "discount_amount":   0,
-        "discount_percentage": 0,
-    }, token=MANAGER_TOK, label="Duplicate bill for already-billed orders (may succeed or warn)")
-    # Just record whether it allowed it — no hard assert here
+    if eligible2:
+        expect_fail("POST", "/bills/", 400, {
+            "guest_id":          GUEST_ID,
+            "order_ids":         eligible2,
+            "discount_amount":   0,
+            "discount_percentage": 0,
+        }, token=MANAGER_TOK, label="Duplicate bill for already-billed orders -> 400")
 
 # Manager can access bill PDF endpoint (may 404 if reportlab not installed)
 if BILL_ID:
